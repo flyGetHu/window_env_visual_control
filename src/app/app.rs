@@ -1,8 +1,101 @@
 use eframe::egui;
+use egui::{Color32, FontId, Rounding, Stroke, Vec2, Widget};
 
 use std::sync::Arc;
 use crate::app::state::AppState;
 use crate::models::env_variable::{EnvScope, EnvVariable};
+
+// 现代化UI主题配置
+#[derive(Clone)]
+struct ModernTheme {
+    primary_color: Color32,
+    secondary_color: Color32,
+    accent_color: Color32,
+    success_color: Color32,
+    warning_color: Color32,
+    error_color: Color32,
+    background_color: Color32,
+    surface_color: Color32,
+    text_primary: Color32,
+    text_secondary: Color32,
+    border_color: Color32,
+    // 新增视觉层次颜色
+    card_background: Color32,
+    card_hover: Color32,
+    card_selected: Color32,
+    shadow_color: Color32,
+    divider_color: Color32,
+    input_background: Color32,
+    input_border: Color32,
+    input_focus: Color32,
+    button_hover: Color32,
+    button_active: Color32,
+    tooltip_background: Color32,
+    user_variable_accent: Color32,
+    system_variable_accent: Color32,
+}
+
+impl ModernTheme {
+    fn new() -> Self {
+        Self {
+            primary_color: Color32::from_rgb(59, 130, 246),     // 蓝色主色调
+            secondary_color: Color32::from_rgb(99, 102, 241),   // 紫色辅助色
+            accent_color: Color32::from_rgb(16, 185, 129),      // 绿色强调色
+            success_color: Color32::from_rgb(34, 197, 94),      // 成功绿色
+            warning_color: Color32::from_rgb(251, 191, 36),     // 警告黄色
+            error_color: Color32::from_rgb(239, 68, 68),        // 错误红色
+            background_color: Color32::from_rgb(248, 250, 252), // 浅灰背景
+            surface_color: Color32::WHITE,                      // 白色表面
+            text_primary: Color32::from_rgb(15, 23, 42),        // 深色主文本
+            text_secondary: Color32::from_rgb(100, 116, 139),   // 灰色辅助文本
+            border_color: Color32::from_rgb(226, 232, 240),     // 边框颜色
+            // 新增视觉层次颜色
+            card_background: Color32::from_rgb(255, 255, 255),  // 卡片背景
+            card_hover: Color32::from_rgb(249, 250, 251),       // 卡片悬停
+            card_selected: Color32::from_rgb(239, 246, 255),    // 卡片选中
+            shadow_color: Color32::from_rgba_unmultiplied(0, 0, 0, 10), // 阴影
+            divider_color: Color32::from_rgb(241, 245, 249),    // 分割线
+            input_background: Color32::from_rgb(255, 255, 255), // 输入框背景
+            input_border: Color32::from_rgb(209, 213, 219),     // 输入框边框
+            input_focus: Color32::from_rgb(59, 130, 246),       // 输入框聚焦
+            button_hover: Color32::from_rgb(37, 99, 235),       // 按钮悬停
+            button_active: Color32::from_rgb(29, 78, 216),      // 按钮激活
+            tooltip_background: Color32::from_rgb(17, 24, 39),  // 工具提示背景
+            user_variable_accent: Color32::from_rgb(34, 197, 94),   // 用户变量强调色
+            system_variable_accent: Color32::from_rgb(251, 191, 36), // 系统变量强调色
+        }
+    }
+    
+    fn dark() -> Self {
+        Self {
+            primary_color: Color32::from_rgb(96, 165, 250),     // 亮蓝色
+            secondary_color: Color32::from_rgb(129, 140, 248),  // 亮紫色
+            accent_color: Color32::from_rgb(52, 211, 153),      // 亮绿色
+            success_color: Color32::from_rgb(74, 222, 128),     // 亮绿色
+            warning_color: Color32::from_rgb(252, 211, 77),     // 亮黄色
+            error_color: Color32::from_rgb(248, 113, 113),      // 亮红色
+            background_color: Color32::from_rgb(15, 23, 42),    // 深色背景
+            surface_color: Color32::from_rgb(30, 41, 59),       // 深色表面
+            text_primary: Color32::from_rgb(248, 250, 252),     // 浅色主文本
+            text_secondary: Color32::from_rgb(148, 163, 184),   // 灰色辅助文本
+            border_color: Color32::from_rgb(51, 65, 85),        // 深色边框
+            // 新增视觉层次颜色（暗色主题）
+            card_background: Color32::from_rgb(30, 41, 59),     // 卡片背景
+            card_hover: Color32::from_rgb(51, 65, 85),          // 卡片悬停
+            card_selected: Color32::from_rgb(30, 58, 138),      // 卡片选中
+            shadow_color: Color32::from_rgba_unmultiplied(0, 0, 0, 25), // 阴影
+            divider_color: Color32::from_rgb(51, 65, 85),       // 分割线
+            input_background: Color32::from_rgb(30, 41, 59),    // 输入框背景
+            input_border: Color32::from_rgb(71, 85, 105),       // 输入框边框
+            input_focus: Color32::from_rgb(96, 165, 250),       // 输入框聚焦
+            button_hover: Color32::from_rgb(59, 130, 246),      // 按钮悬停
+            button_active: Color32::from_rgb(37, 99, 235),      // 按钮激活
+            tooltip_background: Color32::from_rgb(51, 65, 85),  // 工具提示背景
+            user_variable_accent: Color32::from_rgb(74, 222, 128),   // 用户变量强调色
+            system_variable_accent: Color32::from_rgb(252, 211, 77), // 系统变量强调色
+        }
+    }
+}
 
 pub struct EnvManagerApp {
     state: Arc<AppState>,
@@ -20,6 +113,218 @@ pub struct EnvManagerApp {
     show_delete_confirm: bool,
     delete_confirm_variable: Option<String>,
     show_batch_delete_confirm: bool,
+    theme: ModernTheme,
+    is_dark_mode: bool,
+    // 新增UI状态字段
+    expanded_variables: std::collections::HashSet<String>,  // 展开的变量详情
+    hovered_variable: Option<String>,  // 当前悬停的变量
+    show_variable_details: bool,  // 显示变量详情面板
+    selected_detail_variable: Option<String>,  // 详情面板中选中的变量
+    show_import_dialog: bool,  // 显示导入对话框
+    show_export_dialog: bool,  // 显示导出对话框
+    animation_time: f32,  // 动画时间
+    search_focused: bool,  // 搜索框是否聚焦
+    window_width: f32,  // 窗口宽度，用于响应式设计
+    window_height: f32,  // 窗口高度
+    // 响应式UI控制字段
+    show_secondary_buttons: bool,  // 控制次要按钮的显示
+    compact_mode: bool,  // 紧凑模式
+    header_collapsed: bool,  // 头部折叠状态
+}
+
+// 现代化UI辅助函数
+impl EnvManagerApp {
+    fn apply_modern_style(&self, ctx: &egui::Context) {
+        let mut style = (*ctx.style()).clone();
+        
+        // 设置现代化的字体大小和间距
+        style.text_styles.insert(
+            egui::TextStyle::Heading,
+            FontId::new(24.0, egui::FontFamily::Proportional),
+        );
+        style.text_styles.insert(
+            egui::TextStyle::Body,
+            FontId::new(14.0, egui::FontFamily::Proportional),
+        );
+        style.text_styles.insert(
+            egui::TextStyle::Button,
+            FontId::new(14.0, egui::FontFamily::Proportional),
+        );
+        
+        // 设置现代化的间距
+        style.spacing.item_spacing = Vec2::new(8.0, 6.0);
+        style.spacing.button_padding = Vec2::new(12.0, 8.0);
+        style.spacing.menu_margin = egui::Margin::same(8.0);
+        style.spacing.indent = 20.0;
+        
+        // 设置现代化的圆角
+        style.visuals.widgets.noninteractive.rounding = Rounding::same(8.0);
+        style.visuals.widgets.inactive.rounding = Rounding::same(8.0);
+        style.visuals.widgets.hovered.rounding = Rounding::same(8.0);
+        style.visuals.widgets.active.rounding = Rounding::same(8.0);
+        style.visuals.widgets.open.rounding = Rounding::same(8.0);
+        
+        // 设置现代化的颜色
+        if self.is_dark_mode {
+            style.visuals.dark_mode = true;
+            style.visuals.override_text_color = Some(self.theme.text_primary);
+            style.visuals.panel_fill = self.theme.surface_color;
+            style.visuals.window_fill = self.theme.surface_color;
+        } else {
+            style.visuals.dark_mode = false;
+            style.visuals.override_text_color = Some(self.theme.text_primary);
+            style.visuals.panel_fill = self.theme.surface_color;
+            style.visuals.window_fill = self.theme.surface_color;
+        }
+        
+        // 设置现代化的边框
+        style.visuals.widgets.noninteractive.bg_stroke = Stroke::new(1.0, self.theme.border_color);
+        style.visuals.widgets.inactive.bg_stroke = Stroke::new(1.0, self.theme.border_color);
+        
+        ctx.set_style(style);
+    }
+    
+    fn modern_button(&self, ui: &mut egui::Ui, text: &str, color: Color32) -> egui::Response {
+        let button = egui::Button::new(text)
+            .fill(color)
+            .rounding(Rounding::same(8.0))
+            .stroke(Stroke::new(0.0, Color32::TRANSPARENT));
+        ui.add_sized([120.0, 36.0], button)
+    }
+    
+    fn modern_small_button(&self, ui: &mut egui::Ui, text: &str, color: Color32) -> egui::Response {
+        let button = egui::Button::new(text)
+            .fill(color)
+            .rounding(Rounding::same(6.0))
+            .stroke(Stroke::new(0.0, Color32::TRANSPARENT));
+        ui.add_sized([80.0, 28.0], button)
+    }
+    
+    fn modern_card(&self, ui: &mut egui::Ui, add_contents: impl FnOnce(&mut egui::Ui)) {
+        egui::Frame::none()
+            .fill(self.theme.card_background)
+            .rounding(Rounding::same(12.0))
+            .stroke(Stroke::new(1.0, self.theme.border_color))
+            .inner_margin(egui::Margin::same(16.0))
+            .shadow(egui::epaint::Shadow {
+                offset: Vec2::new(0.0, 2.0),
+                blur: 8.0,
+                spread: 0.0,
+                color: self.theme.shadow_color,
+            })
+            .show(ui, add_contents);
+    }
+    
+    fn interactive_card(&self, ui: &mut egui::Ui, is_hovered: bool, is_selected: bool, add_contents: impl FnOnce(&mut egui::Ui)) -> egui::Response {
+        let fill_color = if is_selected {
+            self.theme.card_selected
+        } else if is_hovered {
+            self.theme.card_hover
+        } else {
+            self.theme.card_background
+        };
+        
+        let shadow_blur = if is_hovered { 12.0 } else { 6.0 };
+        let shadow_offset = if is_hovered { Vec2::new(0.0, 4.0) } else { Vec2::new(0.0, 2.0) };
+        
+        egui::Frame::none()
+            .fill(fill_color)
+            .rounding(Rounding::same(8.0))
+            .stroke(Stroke::new(1.0, if is_selected { self.theme.primary_color } else { self.theme.border_color }))
+            .inner_margin(egui::Margin::same(12.0))
+            .shadow(egui::epaint::Shadow {
+                offset: shadow_offset,
+                blur: shadow_blur,
+                spread: 0.0,
+                color: self.theme.shadow_color,
+            })
+            .show(ui, add_contents)
+            .response
+    }
+    
+    fn enhanced_button(&self, ui: &mut egui::Ui, text: &str, color: Color32, icon: Option<&str>) -> egui::Response {
+        let button_height = 36.0;
+        let button_padding = egui::Margin::symmetric(16.0, 8.0);
+        
+        ui.allocate_ui_with_layout(
+            egui::Vec2::new(ui.available_width(), button_height),
+            egui::Layout::left_to_right(egui::Align::Center),
+            |ui| {
+                let response = ui.allocate_response(
+                    egui::Vec2::new(ui.available_width(), button_height),
+                    egui::Sense::click()
+                );
+                let rect = response.rect;
+                
+                let fill_color = if response.clicked() {
+                    self.theme.button_active
+                } else if response.hovered() {
+                    self.theme.button_hover
+                } else {
+                    color
+                };
+                
+                ui.painter().rect_filled(
+                    rect,
+                    Rounding::same(8.0),
+                    fill_color
+                );
+                
+                let text_color = Color32::WHITE;
+                let text_pos = rect.center() - egui::Vec2::new(0.0, 0.0);
+                
+                if let Some(icon_text) = icon {
+                    let icon_pos = egui::Pos2::new(rect.left() + 12.0, rect.center().y);
+                    ui.painter().text(
+                        icon_pos,
+                        egui::Align2::LEFT_CENTER,
+                        icon_text,
+                        FontId::proportional(16.0),
+                        text_color
+                    );
+                    
+                    let text_pos = egui::Pos2::new(rect.left() + 32.0, rect.center().y);
+                    ui.painter().text(
+                        text_pos,
+                        egui::Align2::LEFT_CENTER,
+                        text,
+                        FontId::proportional(14.0),
+                        text_color
+                    );
+                } else {
+                    ui.painter().text(
+                        text_pos,
+                        egui::Align2::CENTER_CENTER,
+                        text,
+                        FontId::proportional(14.0),
+                        text_color
+                    );
+                }
+                
+                response
+            }
+        ).inner
+    }
+    
+    fn show_tooltip(&self, ui: &mut egui::Ui, text: &str, response: &egui::Response) {
+        if response.hovered() {
+            egui::show_tooltip_at_pointer(
+                ui.ctx(),
+                egui::LayerId::new(egui::Order::Tooltip, egui::Id::new("tooltip")),
+                egui::Id::new("tooltip"),
+                |ui: &mut egui::Ui| {
+                    egui::Frame::popup(ui.style())
+                        .fill(self.theme.tooltip_background)
+                        .stroke(Stroke::new(1.0, self.theme.border_color))
+                        .rounding(Rounding::same(6.0))
+                        .inner_margin(egui::Margin::same(8.0))
+                        .show(ui, |ui| {
+                            ui.colored_label(Color32::WHITE, text);
+                        });
+                }
+            );
+        }
+    }
 }
 
 impl Default for EnvManagerApp {
@@ -40,12 +345,29 @@ impl Default for EnvManagerApp {
             show_delete_confirm: false,
             delete_confirm_variable: None,
             show_batch_delete_confirm: false,
+            theme: ModernTheme::new(),
+            is_dark_mode: false,
+            // 新增字段的默认值
+            expanded_variables: std::collections::HashSet::new(),
+            hovered_variable: None,
+            show_variable_details: false,
+            selected_detail_variable: None,
+            show_import_dialog: false,
+            show_export_dialog: false,
+            animation_time: 0.0,
+            search_focused: false,
+            window_width: 1200.0,
+            window_height: 800.0,
+            // 响应式UI控制字段的默认值
+            show_secondary_buttons: true,
+            compact_mode: false,
+            header_collapsed: false,
         }
     }
 }
 
 impl EnvManagerApp {
-    pub fn new(cc: &eframe::CreationContext<'_>) -> Self {
+    pub fn new(_cc: &eframe::CreationContext<'_>) -> Self {
         let mut app = Self::default();
         
         // 加载环境变量
@@ -54,6 +376,15 @@ impl EnvManagerApp {
         }
         
         app
+    }
+    
+    fn toggle_theme(&mut self) {
+        self.is_dark_mode = !self.is_dark_mode;
+        self.theme = if self.is_dark_mode {
+            ModernTheme::dark()
+        } else {
+            ModernTheme::new()
+        };
     }
 
     fn load_variables(&mut self,
@@ -198,180 +529,798 @@ impl EnvManagerApp {
     }
 
     fn render_header(&mut self, ui: &mut egui::Ui) {
-        ui.horizontal(|ui| {
-            ui.heading("Windows Environment Variables Manager");
-            
-            ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                if ui.button("⚙ Settings").clicked() {
-                    self.show_settings = true;
-                }
-                
-                // 批量操作模式切换
-                if ui.button(if self.batch_operation_mode { "📋 Exit Batch" } else { "📋 Batch Mode" }).clicked() {
-                    self.batch_operation_mode = !self.batch_operation_mode;
-                    if !self.batch_operation_mode {
-                        self.selected_variables.clear();
-                    }
-                }
-                
-                // 根据模式显示不同的操作按钮
-                if self.batch_operation_mode {
-                    if ui.button("🗑 Delete Selected").clicked() && !self.selected_variables.is_empty() {
-                        self.delete_selected_variables();
-                    }
-                    
-                    if ui.button("📤 Export Selected").clicked() && !self.selected_variables.is_empty() {
-                        self.export_selected_variables();
-                    }
-                    
-                    ui.label(format!("Selected: {}", self.selected_variables.len()));
+        // 更新窗口尺寸以实现响应式设计
+        self.window_width = ui.available_width();
+        self.window_height = ui.available_height();
+        
+        // 根据窗口宽度自动调整UI模式
+        let is_narrow = self.window_width < 1000.0;
+        let is_very_narrow = self.window_width < 800.0;
+        
+        // 自动调整紧凑模式和按钮显示
+        self.compact_mode = is_very_narrow;
+        self.show_secondary_buttons = !is_narrow || self.header_collapsed;
+        
+        let mut toggle_theme = false;
+        let mut show_settings = false;
+        let mut toggle_batch_mode = false;
+        let mut delete_selected = false;
+        let mut export_selected = false;
+        let mut show_add_dialog = false;
+        let mut refresh_vars = false;
+        let mut show_import_dialog = false;
+        let mut show_export_dialog = false;
+        let mut toggle_header_collapse = false;
+        
+        let theme = &self.theme;
+        let is_dark_mode = self.is_dark_mode;
+        let batch_operation_mode = self.batch_operation_mode;
+        let selected_count = self.selected_variables.len();
+        let has_selected_vars = !self.selected_variables.is_empty();
+        
+        // 检查选中的变量是否为用户级变量
+        let selected_var_scope = self.selected_variable.as_ref()
+            .and_then(|name| self.variables.iter().find(|v| &v.name == name))
+            .map(|v| &v.scope);
+        let is_user_var = matches!(selected_var_scope, Some(EnvScope::User));
+        let selected_var_name = self.selected_variable.clone();
+        
+        egui::Frame::none()
+            .fill(theme.surface_color)
+            .stroke(Stroke::new(1.0, theme.border_color))
+            .rounding(Rounding::same(8.0))
+            .inner_margin(egui::Margin::same(if self.compact_mode { 8.0 } else { 12.0 }))
+            .show(ui, |ui| {
+                if self.compact_mode {
+                    // 紧凑模式：垂直布局
+                    ui.vertical(|ui| {
+                        // 标题行
+                        ui.horizontal(|ui| {
+                            ui.colored_label(theme.text_primary, 
+                                egui::RichText::new("🌐 Environment Manager")
+                                    .size(16.0)
+                                    .strong());
+                            
+                            ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                                // 折叠/展开按钮
+                                let collapse_icon = if self.header_collapsed { "⬇" } else { "⬆" };
+                                if ui.add(egui::Button::new(collapse_icon)
+                                    .fill(theme.primary_color.gamma_multiply(0.1))
+                                    .stroke(Stroke::new(1.0, theme.primary_color))
+                                    .rounding(Rounding::same(4.0))
+                                ).clicked() {
+                                    toggle_header_collapse = true;
+                                }
+                                
+                                // 主题切换按钮
+                                let theme_icon = if is_dark_mode { "☀" } else { "🌙" };
+                                if ui.add(egui::Button::new(theme_icon)
+                                    .fill(theme.secondary_color.gamma_multiply(0.1))
+                                    .stroke(Stroke::new(1.0, theme.secondary_color))
+                                    .rounding(Rounding::same(4.0))
+                                ).clicked() {
+                                    toggle_theme = true;
+                                }
+                            });
+                        });
+                        
+                        // 可折叠的按钮区域
+                        if !self.header_collapsed {
+                            ui.add_space(8.0);
+                            
+                            // 常用操作按钮（第一行）
+                            ui.horizontal_wrapped(|ui| {
+                                // 添加按钮（常用）
+                                if ui.add(egui::Button::new("➕ 添加")
+                                    .fill(theme.success_color.gamma_multiply(0.1))
+                                    .stroke(Stroke::new(1.0, theme.success_color))
+                                    .rounding(Rounding::same(4.0))
+                                ).clicked() {
+                                    show_add_dialog = true;
+                                }
+                                
+                                // 刷新按钮（常用）
+                                if ui.add(egui::Button::new("🔄 刷新")
+                                    .fill(theme.primary_color.gamma_multiply(0.1))
+                                    .stroke(Stroke::new(1.0, theme.primary_color))
+                                    .rounding(Rounding::same(4.0))
+                                ).clicked() {
+                                    refresh_vars = true;
+                                }
+                                
+                                // 批量操作模式切换（常用）
+                                let batch_color = if batch_operation_mode { theme.accent_color } else { theme.primary_color };
+                                let batch_text = if batch_operation_mode { "📋 退出批量" } else { "📋 批量" };
+                                if ui.add(egui::Button::new(batch_text)
+                                    .fill(batch_color.gamma_multiply(0.1))
+                                    .stroke(Stroke::new(1.0, batch_color))
+                                    .rounding(Rounding::same(4.0))
+                                ).clicked() {
+                                    toggle_batch_mode = true;
+                                }
+                            });
+                            
+                            ui.add_space(4.0);
+                            
+                            // 次要操作按钮（第二行）
+                            ui.horizontal_wrapped(|ui| {
+                                // 导入按钮（次要）
+                                if ui.add(egui::Button::new("📥 导入")
+                                    .fill(theme.accent_color.gamma_multiply(0.1))
+                                    .stroke(Stroke::new(1.0, theme.accent_color))
+                                    .rounding(Rounding::same(4.0))
+                                ).clicked() {
+                                    show_import_dialog = true;
+                                }
+                                
+                                // 导出按钮（次要）
+                                if ui.add(egui::Button::new("📤 导出")
+                                    .fill(theme.accent_color.gamma_multiply(0.1))
+                                    .stroke(Stroke::new(1.0, theme.accent_color))
+                                    .rounding(Rounding::same(4.0))
+                                ).clicked() {
+                                    show_export_dialog = true;
+                                }
+                                
+                                // 设置按钮（次要）
+                                if ui.add(egui::Button::new("⚙ 设置")
+                                    .fill(theme.text_secondary.gamma_multiply(0.1))
+                                    .stroke(Stroke::new(1.0, theme.text_secondary))
+                                    .rounding(Rounding::same(4.0))
+                                ).clicked() {
+                                    show_settings = true;
+                                }
+                            });
+                            
+                            // 批量操作或单个操作按钮
+                            if batch_operation_mode {
+                                ui.add_space(4.0);
+                                ui.horizontal_wrapped(|ui| {
+                                    ui.add_enabled_ui(has_selected_vars, |ui| {
+                                        if ui.add(egui::Button::new("🗑 删除选中")
+                                            .fill(theme.error_color.gamma_multiply(0.1))
+                                            .stroke(Stroke::new(1.0, theme.error_color))
+                                            .rounding(Rounding::same(4.0))
+                                        ).clicked() {
+                                            delete_selected = true;
+                                        }
+                                    });
+                                    
+                                    ui.add_enabled_ui(has_selected_vars, |ui| {
+                                        if ui.add(egui::Button::new("📤 导出选中")
+                                            .fill(theme.accent_color.gamma_multiply(0.1))
+                                            .stroke(Stroke::new(1.0, theme.accent_color))
+                                            .rounding(Rounding::same(4.0))
+                                        ).clicked() {
+                                            export_selected = true;
+                                        }
+                                    });
+                                    
+                                    // 选中计数器
+                                    egui::Frame::none()
+                                        .fill(theme.primary_color.gamma_multiply(0.1))
+                                        .rounding(Rounding::same(12.0))
+                                        .inner_margin(egui::Margin::symmetric(8.0, 4.0))
+                                        .show(ui, |ui| {
+                                            ui.colored_label(theme.primary_color, 
+                                                format!("已选择: {}", selected_count));
+                                        });
+                                });
+                            }
+                        }
+                    });
                 } else {
-                    // 检查选中的变量是否为用户级变量
-                    let selected_var_scope = self.selected_variable.as_ref()
-                        .and_then(|name| self.variables.iter().find(|v| &v.name == name))
-                        .map(|v| &v.scope);
-                    
-                    let is_user_var = matches!(selected_var_scope, Some(EnvScope::User));
-                    
-                    // 删除按钮 - 只对用户级变量启用
-                    ui.add_enabled_ui(is_user_var, |ui| {
-                        if ui.button("🗑 Delete").clicked() {
-                            if let Some(name) = self.selected_variable.clone() {
-                                self.delete_variable(&name);
+                    // 标准模式：水平布局
+                    ui.horizontal(|ui| {
+                        // 左侧标题区域
+                        ui.vertical(|ui| {
+                            ui.add_space(4.0);
+                            ui.colored_label(theme.text_primary, 
+                                egui::RichText::new("🌐 Environment Manager")
+                                    .size(20.0)
+                                    .strong());
+                            ui.colored_label(theme.text_secondary, 
+                                "Windows环境变量管理工具");
+                        });
+                        
+                        ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                            // 主题切换按钮
+                            let theme_icon = if is_dark_mode { "☀" } else { "🌙" };
+                            if ui.add(egui::Button::new(theme_icon)
+                                .fill(theme.secondary_color.gamma_multiply(0.1))
+                                .stroke(Stroke::new(1.0, theme.secondary_color))
+                                .rounding(Rounding::same(6.0))
+                            ).clicked() {
+                                toggle_theme = true;
                             }
-                        }
-                    });
-                    
-                    // 编辑按钮 - 只对用户级变量启用
-                    ui.add_enabled_ui(is_user_var, |ui| {
-                        if ui.button("✏ Edit").clicked() {
-                            if let Some(name) = &self.selected_variable {
-                                self.editing_variable = Some(name.clone());
+                            
+                            ui.add_space(8.0);
+                            
+                            // 常用操作按钮
+                            // 添加按钮（常用）
+                            if ui.add(egui::Button::new("➕ 添加")
+                                .fill(theme.success_color.gamma_multiply(0.1))
+                                .stroke(Stroke::new(1.0, theme.success_color))
+                                .rounding(Rounding::same(6.0))
+                            ).clicked() {
+                                show_add_dialog = true;
                             }
-                        }
+                            
+                            ui.add_space(4.0);
+                            
+                            // 刷新按钮（常用）
+                            if ui.add(egui::Button::new("🔄 刷新")
+                                .fill(theme.primary_color.gamma_multiply(0.1))
+                                .stroke(Stroke::new(1.0, theme.primary_color))
+                                .rounding(Rounding::same(6.0))
+                            ).clicked() {
+                                refresh_vars = true;
+                            }
+                            
+                            ui.add_space(4.0);
+                            
+                            // 批量操作模式切换（常用）
+                            let batch_color = if batch_operation_mode { theme.accent_color } else { theme.primary_color };
+                            let batch_text = if batch_operation_mode { "📋 退出批量" } else { "📋 批量模式" };
+                            if ui.add(egui::Button::new(batch_text)
+                                .fill(batch_color.gamma_multiply(0.1))
+                                .stroke(Stroke::new(1.0, batch_color))
+                                .rounding(Rounding::same(6.0))
+                            ).clicked() {
+                                toggle_batch_mode = true;
+                            }
+                            
+                            ui.add_space(8.0);
+                            
+                            // 根据模式显示不同的操作按钮
+                            if batch_operation_mode {
+                                // 批量操作按钮
+                                ui.add_enabled_ui(has_selected_vars, |ui| {
+                                    if ui.add(egui::Button::new("🗑 删除选中")
+                                        .fill(theme.error_color.gamma_multiply(0.1))
+                                        .stroke(Stroke::new(1.0, theme.error_color))
+                                        .rounding(Rounding::same(6.0))
+                                    ).clicked() {
+                                        delete_selected = true;
+                                    }
+                                });
+                                
+                                ui.add_space(4.0);
+                                
+                                ui.add_enabled_ui(has_selected_vars, |ui| {
+                                    if ui.add(egui::Button::new("📤 导出选中")
+                                        .fill(theme.accent_color.gamma_multiply(0.1))
+                                        .stroke(Stroke::new(1.0, theme.accent_color))
+                                        .rounding(Rounding::same(6.0))
+                                    ).clicked() {
+                                        export_selected = true;
+                                    }
+                                });
+                                
+                                ui.add_space(8.0);
+                                
+                                // 选中计数器
+                                egui::Frame::none()
+                                    .fill(theme.primary_color.gamma_multiply(0.1))
+                                    .rounding(Rounding::same(16.0))
+                                    .inner_margin(egui::Margin::symmetric(12.0, 6.0))
+                                    .show(ui, |ui| {
+                                        ui.colored_label(theme.primary_color, 
+                                            format!("已选择: {}", selected_count));
+                                    });
+                            }
+                            
+                            // 次要操作按钮（在窗口足够宽时显示）
+                            if self.show_secondary_buttons {
+                                // 导入按钮（次要）
+                                if ui.add(egui::Button::new("📥 导入")
+                                    .fill(theme.accent_color.gamma_multiply(0.1))
+                                    .stroke(Stroke::new(1.0, theme.accent_color))
+                                    .rounding(Rounding::same(6.0))
+                                ).clicked() {
+                                    show_import_dialog = true;
+                                }
+                                
+                                ui.add_space(4.0);
+                                
+                                // 导出按钮（次要）
+                                if ui.add(egui::Button::new("📤 导出")
+                                    .fill(theme.accent_color.gamma_multiply(0.1))
+                                    .stroke(Stroke::new(1.0, theme.accent_color))
+                                    .rounding(Rounding::same(6.0))
+                                ).clicked() {
+                                    show_export_dialog = true;
+                                }
+                                
+                                ui.add_space(4.0);
+                                
+                                // 设置按钮（次要）
+                                if ui.add(egui::Button::new("⚙ 设置")
+                                    .fill(theme.text_secondary.gamma_multiply(0.1))
+                                    .stroke(Stroke::new(1.0, theme.text_secondary))
+                                    .rounding(Rounding::same(6.0))
+                                ).clicked() {
+                                    show_settings = true;
+                                }
+                            } else {
+                                // 在窗口较窄时显示更多按钮的折叠菜单
+                                if ui.add(egui::Button::new("⋯ 更多")
+                                    .fill(theme.text_secondary.gamma_multiply(0.1))
+                                    .stroke(Stroke::new(1.0, theme.text_secondary))
+                                    .rounding(Rounding::same(6.0))
+                                ).clicked() {
+                                    toggle_header_collapse = true;
+                                }
+                            }
+                        });
                     });
+                }
+            });
+        
+        // 在闭包外部处理状态变更
+        if toggle_theme {
+            self.toggle_theme();
+        }
+        if show_settings {
+            self.show_settings = true;
+        }
+        if toggle_batch_mode {
+            self.batch_operation_mode = !self.batch_operation_mode;
+            if !self.batch_operation_mode {
+                self.selected_variables.clear();
+            }
+        }
+        if delete_selected {
+            self.delete_selected_variables();
+        }
+        if export_selected {
+            self.export_selected_variables();
+        }
+
+        if show_add_dialog {
+            self.show_add_dialog = true;
+        }
+        if refresh_vars {
+            self.refresh_variables();
+        }
+        if show_import_dialog {
+            self.show_import_dialog = true;
+        }
+        if show_export_dialog {
+            self.show_export_dialog = true;
+        }
+        if toggle_header_collapse {
+            self.header_collapsed = !self.header_collapsed;
+        }
+    }
+
+    fn render_search(&mut self, ui: &mut egui::Ui) {
+        self.modern_card(ui, |ui| {
+            ui.horizontal(|ui| {
+                // 搜索图标和标签
+                ui.colored_label(self.theme.text_primary, "🔍");
+                ui.colored_label(self.theme.text_primary, "搜索:");
+                
+                // 现代化搜索框
+                let mut search = self.state.search_query.lock().unwrap().clone();
+                let search_is_empty = search.is_empty();
+                let search_response = ui.add_sized(
+                    [300.0, 32.0],
+                    egui::TextEdit::singleline(&mut search)
+                        .hint_text("输入变量名称进行搜索...")
+                        .desired_width(300.0)
+                );
+                
+                if search_response.changed() {
+                    self.state.set_search_query(search.clone());
                 }
                 
-                if ui.button("➕ Add").clicked() {
-                    self.show_add_dialog = true;
+                ui.add_space(16.0);
+                
+                // 过滤器图标和标签
+                ui.colored_label(self.theme.text_primary, "🎯");
+                ui.colored_label(self.theme.text_primary, "过滤器:");
+                
+                let mut selected_scope = self.state.selected_scope.lock().unwrap().clone();
+                
+                let mut scope_str = match &selected_scope {
+                    Some(EnvScope::User) => "用户变量",
+                    Some(EnvScope::System) => "系统变量",
+                    None => "用户变量", // 默认显示User
+                }.to_string();
+                
+                // 现代化下拉框
+                egui::ComboBox::from_label("")
+                    .selected_text(&scope_str)
+                    .width(120.0)
+                    .show_ui(ui, |ui| {
+                        if ui.selectable_value(&mut scope_str, "用户变量".to_string(), "👤 用户变量").clicked() {
+                            selected_scope = Some(EnvScope::User);
+                        }
+                      
+                        if ui.selectable_value(&mut scope_str, "系统变量".to_string(), "🖥 系统变量").clicked() {
+                            selected_scope = Some(EnvScope::System);
+                        }
+                    });
+                
+                if selected_scope != *self.state.selected_scope.lock().unwrap() {
+                    self.state.set_selected_scope(selected_scope);
                 }
                 
-                if ui.button("🔄 Refresh").clicked() {
-                    self.refresh_variables();
-                }
+                ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                    // 清除搜索按钮
+                    if !search_is_empty {
+                        if self.modern_small_button(ui, "✖ 清除", self.theme.text_secondary).clicked() {
+                            self.state.set_search_query(String::new());
+                        }
+                    }
+                });
             });
         });
     }
 
-    fn render_search(&mut self, ui: &mut egui::Ui) {
-        ui.horizontal(|ui| {
-            ui.label("Search:");
-            let mut search = self.state.search_query.lock().unwrap().clone();
-            if ui.text_edit_singleline(&mut search).changed() {
-                self.state.set_search_query(search);
-            }
-            
-            ui.label("Filter:");
-            let mut selected_scope = self.state.selected_scope.lock().unwrap().clone();
-            
-            let mut scope_str = match &selected_scope {
-                Some(EnvScope::User) => "User",
-                Some(EnvScope::System) => "System",
-                None => "User", // 默认显示User
-            }.to_string();
-            
-            egui::ComboBox::from_label("")
-                .selected_text(scope_str.clone())
-                .show_ui(ui, |ui| {
-                    if ui.selectable_value(&mut scope_str, "User".to_string(), "User").clicked() {
-                        selected_scope = Some(EnvScope::User);
-                    }
-                  
-                    if ui.selectable_value(&mut scope_str, "System".to_string(), "System").clicked() {
-                        selected_scope = Some(EnvScope::System);
-                    }
-                });
-            
-            if selected_scope != *self.state.selected_scope.lock().unwrap() {
-                self.state.set_selected_scope(selected_scope);
-            }
-        });
-    }
-
     fn render_variables_list(&mut self, ui: &mut egui::Ui) {
-        let filtered_vars = self.state.filter_variables(&self.variables
-        );
+        let filtered_vars = self.state.filter_variables(&self.variables);
+        let available_width = ui.available_width();
+        
+        // 计算响应式列宽
+        let checkbox_width = if self.batch_operation_mode { 50.0 } else { 0.0 };
+        let scope_width = 80.0;
+        let actions_width = 120.0; // 操作按钮列宽度
+        let remaining_width = available_width - checkbox_width - scope_width - actions_width - 40.0; // 40.0 for margins
+        let name_width = (remaining_width * 0.35).max(150.0); // 35% 最小150px
+        let value_width = remaining_width - name_width;
 
-        egui::ScrollArea::vertical().show(ui, |ui| {
-            let num_columns = if self.batch_operation_mode { 4 } else { 3 };
-            
-            egui::Grid::new("variables_grid")
-                .striped(true)
-                .num_columns(num_columns)
-                .show(ui, |ui| {
-                    // 表头
-                    if self.batch_operation_mode {
-                        ui.label("Select");
-                    }
-                    ui.label("Name");
-                    ui.label("Value");
-                    ui.label("Scope");
-                    ui.end_row();
-
-                    for var in filtered_vars {
-                        // 批量选择模式下的复选框
+        egui::ScrollArea::vertical()
+            .auto_shrink([false; 2])
+            .show(ui, |ui| {
+                if filtered_vars.is_empty() {
+                    // 空状态显示
+                    ui.vertical_centered(|ui| {
+                        ui.add_space(60.0);
+                        ui.colored_label(self.theme.text_secondary, 
+                            egui::RichText::new("📭")
+                                .size(48.0));
+                        ui.add_space(16.0);
+                        ui.colored_label(self.theme.text_secondary, 
+                            "没有找到匹配的环境变量");
+                        ui.colored_label(self.theme.text_secondary, 
+                            "尝试调整搜索条件或添加新变量");
+                    });
+                    return;
+                }
+                
+                // 响应式表头
+                self.modern_card(ui, |ui| {
+                    ui.horizontal(|ui| {
                         if self.batch_operation_mode {
-                            let mut is_batch_selected = self.selected_variables.contains(&var.name);
-                            if ui.checkbox(&mut is_batch_selected, "").changed() {
-                                if is_batch_selected {
-                                    if !self.selected_variables.contains(&var.name) {
-                                        self.selected_variables.push(var.name.clone());
-                                    }
-                                } else {
-                                    self.selected_variables.retain(|x| x != &var.name);
+                            ui.allocate_ui_with_layout(
+                                Vec2::new(checkbox_width, 24.0),
+                                egui::Layout::left_to_right(egui::Align::Center),
+                                |ui| {
+                                    ui.colored_label(self.theme.text_secondary,
+                                        egui::RichText::new("选择").strong());
                                 }
-                            }
+                            );
                         }
                         
-                        // 变量名（单选模式下可选择）
-                        if self.batch_operation_mode {
-                            ui.label(&var.name);
-                        } else {
-                            let is_selected = self.selected_variable.as_ref() == Some(&var.name);
-                            if ui.selectable_label(is_selected, &var.name).clicked() {
-                                self.selected_variable = Some(var.name.clone());
+                        ui.allocate_ui_with_layout(
+                            Vec2::new(name_width, 24.0),
+                            egui::Layout::left_to_right(egui::Align::Center),
+                            |ui| {
+                                ui.colored_label(self.theme.text_secondary,
+                                    egui::RichText::new("变量名").strong());
                             }
-                        }
+                        );
                         
-                        // 变量值（编辑模式 - 系统变量只读）
-                        let mut value = var.value.clone();
-                        if self.editing_variable.as_ref() == Some(&var.name) && var.scope == EnvScope::User {
-                            ui.text_edit_multiline(&mut value);
-                            
-                            ui.horizontal(|ui| {
-                                if ui.button("Save").clicked() {
-                                    self.update_variable(&var.name, value);
-                                }
-                                if ui.button("Cancel").clicked() {
-                                    self.editing_variable = None;
-                                }
-                            });
-                        } else {
-                            if var.scope == EnvScope::System {
-                                ui.colored_label(egui::Color32::GRAY, &var.value); // 系统变量显示为灰色
-                            } else {
-                                ui.label(&var.value);
+                        ui.allocate_ui_with_layout(
+                            Vec2::new(value_width, 24.0),
+                            egui::Layout::left_to_right(egui::Align::Center),
+                            |ui| {
+                                ui.colored_label(self.theme.text_secondary,
+                                    egui::RichText::new("变量值").strong());
                             }
-                        }
+                        );
                         
-                        ui.label(match var.scope {
-                            EnvScope::User => "User",
-                            EnvScope::System => "System",
-                        });
-                        ui.end_row();
-                    }
+                        ui.allocate_ui_with_layout(
+                            Vec2::new(scope_width, 24.0),
+                            egui::Layout::left_to_right(egui::Align::Center),
+                            |ui| {
+                                ui.colored_label(self.theme.text_secondary,
+                                    egui::RichText::new("作用域").strong());
+                            }
+                        );
+                        
+                        // 操作列标题
+                        ui.allocate_ui_with_layout(
+                            Vec2::new(actions_width, 24.0),
+                            egui::Layout::left_to_right(egui::Align::Center),
+                            |ui| {
+                                ui.colored_label(self.theme.text_secondary,
+                                    egui::RichText::new("操作").strong());
+                            }
+                        );
+                    });
                 });
-        });
+                
+                ui.add_space(8.0);
+                
+                // 响应式变量列表
+                for (index, var) in filtered_vars.iter().enumerate() {
+                    let is_selected = self.selected_variable.as_ref() == Some(&var.name);
+                    let is_system = var.scope == EnvScope::System;
+                    let is_editing = self.editing_variable.as_ref() == Some(&var.name);
+                    let is_hovered = self.hovered_variable.as_ref() == Some(&var.name);
+                    let is_expanded = self.expanded_variables.contains(&var.name);
+                    
+                    // 变量行背景色
+                    let bg_color = if is_selected {
+                        self.theme.card_selected
+                    } else if is_hovered {
+                        self.theme.card_hover
+                    } else if index % 2 == 0 {
+                        self.theme.surface_color
+                    } else {
+                        self.theme.background_color
+                    };
+                    
+                    // 克隆需要的数据以避免借用冲突
+                    let theme = self.theme.clone();
+                    let batch_operation_mode = self.batch_operation_mode;
+                    let var_name = var.name.clone();
+                    let var_value = var.value.clone();
+                    let var_scope = var.scope.clone();
+                    let is_batch_selected = self.selected_variables.contains(&var.name);
+                    
+                    // 用于在闭包外处理状态更新的变量
+                    let mut batch_selection_changed = false;
+                    let mut new_batch_selection = is_batch_selected;
+                    let mut name_clicked = false;
+                    let mut save_clicked = false;
+                    let mut cancel_clicked = false;
+                    let mut edit_clicked = false;
+                    let mut delete_clicked = false;
+                    let mut new_value = var.value.clone();
+                    
+                    let card_response = self.interactive_card(ui, is_hovered, is_selected, |ui| {
+                            ui.horizontal(|ui| {
+                                // 批量选择复选框 - 响应式
+                                if batch_operation_mode {
+                                    ui.allocate_ui_with_layout(
+                                        Vec2::new(checkbox_width, 32.0),
+                                        egui::Layout::left_to_right(egui::Align::Center),
+                                        |ui| {
+                                            let mut is_selected = is_batch_selected;
+                                            if ui.checkbox(&mut is_selected, "").changed() {
+                                                batch_selection_changed = true;
+                                                new_batch_selection = is_selected;
+                                            }
+                                        }
+                                    );
+                                }
+                                
+                                // 变量名 - 响应式
+                                let name_color = if is_system { theme.text_secondary } else { theme.text_primary };
+                                let name_icon = if is_system { "🖥" } else { "👤" };
+                                
+                                ui.allocate_ui_with_layout(
+                                    Vec2::new(name_width, 32.0),
+                                    egui::Layout::left_to_right(egui::Align::Center),
+                                    |ui| {
+                                        if batch_operation_mode {
+                                            ui.label(
+                                                egui::RichText::new(format!("{} {}", name_icon, var_name))
+                                                    .color(name_color)
+                                            );
+                                        } else {
+                                            let name_response = ui.selectable_label(is_selected, 
+                                                egui::RichText::new(format!("{} {}", name_icon, var_name))
+                                                    .color(name_color)
+                                            );
+                                            if name_response.clicked() {
+                                                name_clicked = true;
+                                            }
+                                        }
+                                    }
+                                );
+                                
+                                // 变量值 - 响应式
+                                ui.allocate_ui_with_layout(
+                                    Vec2::new(value_width, if is_editing && !is_system { 80.0 } else { 32.0 }),
+                                    egui::Layout::left_to_right(egui::Align::Center),
+                                    |ui| {
+                                        if is_editing && !is_system {
+                                            ui.vertical(|ui| {
+                                                let _edit_response = ui.add_sized(
+                                                    [value_width - 10.0, 50.0], 
+                                                    egui::TextEdit::multiline(&mut new_value)
+                                                        .desired_width(value_width - 10.0)
+                                                );
+                                                
+                                                ui.horizontal(|ui| {
+                                                    if ui.button("💾 保存").clicked() {
+                                                        save_clicked = true;
+                                                    }
+                                                    if ui.button("❌ 取消").clicked() {
+                                                        cancel_clicked = true;
+                                                    }
+                                                });
+                                            });
+                                        } else {
+                                            // 智能截断长文本
+                                            let max_chars = ((value_width / 8.0) as usize).max(20);
+                                            let value_text = if var_value.len() > max_chars {
+                                                format!("{}...", &var_value[..max_chars])
+                                            } else {
+                                                var_value.clone()
+                                            };
+                                            
+                                            let value_color = if is_system { theme.text_secondary } else { theme.text_primary };
+                                            ui.label(
+                                                egui::RichText::new(value_text)
+                                                    .color(value_color)
+                                                    .monospace()
+                                            );
+                                        }
+                                    }
+                                );
+                                
+                                // 作用域标签 - 响应式
+                                ui.allocate_ui_with_layout(
+                                    Vec2::new(scope_width, 32.0),
+                                    egui::Layout::left_to_right(egui::Align::Center),
+                                    |ui| {
+                                        let (scope_text, scope_color) = match var_scope {
+                                            EnvScope::User => ("用户", theme.success_color),
+                                            EnvScope::System => ("系统", theme.warning_color),
+                                        };
+                                        
+                                        egui::Frame::none()
+                                            .fill(scope_color.gamma_multiply(0.1))
+                                            .rounding(Rounding::same(12.0))
+                                            .inner_margin(egui::Margin::symmetric(8.0, 4.0))
+                                            .show(ui, |ui| {
+                                                ui.colored_label(scope_color, scope_text);
+                                            });
+                                    }
+                                );
+                                
+                                // 操作按钮 - 响应式
+                                ui.allocate_ui_with_layout(
+                                    Vec2::new(actions_width, 32.0),
+                                    egui::Layout::left_to_right(egui::Align::Center),
+                                    |ui| {
+                                        ui.spacing_mut().item_spacing.x = 4.0;
+                                        
+                                        // 编辑按钮 - 只对用户变量显示
+                                        if !is_system {
+                                            if ui.small_button("✏️").on_hover_text("编辑变量").clicked() {
+                                                edit_clicked = true;
+                                            }
+                                        }
+                                        
+                                        // 删除按钮 - 只对用户变量显示
+                                        if !is_system {
+                                            let delete_button = ui.small_button("🗑️").on_hover_text("删除变量");
+                                            if delete_button.clicked() {
+                                                delete_clicked = true;
+                                            }
+                                        }
+                                        
+                                        // 复制按钮 - 对所有变量显示
+                                        if ui.small_button("📋").on_hover_text("复制变量值").clicked() {
+                                            ui.output_mut(|o| o.copied_text = var_value.clone());
+                                        }
+                                    }
+                                );
+                            });
+                    });
+                    
+                    // 在闭包外处理状态更新
+                    if batch_selection_changed {
+                        if new_batch_selection {
+                            if !self.selected_variables.contains(&var.name) {
+                                self.selected_variables.push(var.name.clone());
+                            }
+                        } else {
+                            self.selected_variables.retain(|x| x != &var.name);
+                        }
+                    }
+                    
+                    if name_clicked {
+                        self.selected_variable = Some(var.name.clone());
+                    }
+                    
+                    if save_clicked {
+                        self.update_variable(&var.name, new_value);
+                    }
+                    
+                    if cancel_clicked {
+                        self.editing_variable = None;
+                    }
+                    
+                    if edit_clicked {
+                        self.editing_variable = Some(var.name.clone());
+                    }
+                    
+                    if delete_clicked {
+                        self.delete_confirm_variable = Some(var.name.clone());
+                        self.show_delete_confirm = true;
+                    }
+                    
+                    // 处理悬停和点击事件
+                    if card_response.hovered() {
+                        self.hovered_variable = Some(var.name.clone());
+                        // 显示完整值的工具提示
+                        if var.value.len() > 50 {
+                            self.show_tooltip(ui, &var.value, &card_response);
+                        }
+                    } else if self.hovered_variable.as_ref() == Some(&var.name) {
+                        self.hovered_variable = None;
+                    }
+                    
+                    // 双击展开详情
+                    if card_response.double_clicked() {
+                        if self.expanded_variables.contains(&var.name) {
+                            self.expanded_variables.remove(&var.name);
+                        } else {
+                            self.expanded_variables.insert(var.name.clone());
+                        }
+                    }
+                    
+                    // 右键显示详情面板
+                    if card_response.secondary_clicked() {
+                        self.selected_detail_variable = Some(var.name.clone());
+                        self.show_variable_details = true;
+                    }
+                    
+                    // 展开的详情区域
+                    if is_expanded {
+                        ui.add_space(4.0);
+                        self.modern_card(ui, |ui| {
+                            ui.vertical(|ui| {
+                                ui.horizontal(|ui| {
+                                    ui.colored_label(self.theme.text_secondary, "完整值:");
+                                    ui.add_space(8.0);
+                                    if ui.small_button("📋 复制").clicked() {
+                                        ui.output_mut(|o| o.copied_text = var.value.clone());
+                                    }
+                                });
+                                
+                                ui.add_space(4.0);
+                                
+                                egui::Frame::none()
+                                    .fill(self.theme.input_background)
+                                    .rounding(Rounding::same(4.0))
+                                    .inner_margin(egui::Margin::same(8.0))
+                                    .show(ui, |ui| {
+                                        ui.add(
+                                            egui::TextEdit::multiline(&mut var.value.clone())
+                                                .desired_rows(3)
+                                                .interactive(false)
+                                                .font(egui::TextStyle::Monospace)
+                                        );
+                                    });
+                                
+                                ui.add_space(8.0);
+                                
+                                ui.horizontal(|ui| {
+                                    ui.colored_label(self.theme.text_secondary, 
+                                        format!("字符长度: {}", var.value.len()));
+                                    ui.add_space(16.0);
+                                    ui.colored_label(self.theme.text_secondary, 
+                                        format!("作用域: {}", match var.scope {
+                                            EnvScope::User => "用户变量",
+                                            EnvScope::System => "系统变量",
+                                        }));
+                                });
+                            });
+                        });
+                    }
+                    
+                    ui.add_space(2.0);
+                }
+            });
     }
 
     fn render_add_dialog(&mut self, ctx: &egui::Context) {
@@ -379,39 +1328,158 @@ impl EnvManagerApp {
         let mut add_clicked = false;
         let mut cancel_clicked = false;
         
-        egui::Window::new("Add New Variable")
+        egui::Window::new("")
             .open(&mut self.show_add_dialog)
+            .collapsible(false)
+            .resizable(false)
+            .anchor(egui::Align2::CENTER_CENTER, [0.0, 0.0])
+            .fixed_size([480.0, 360.0])
+            .frame(egui::Frame::window(&ctx.style())
+                .fill(self.theme.surface_color)
+                .stroke(Stroke::new(2.0, self.theme.primary_color))
+                .rounding(Rounding::same(16.0))
+                .shadow(egui::epaint::Shadow {
+                    offset: Vec2::new(0.0, 4.0),
+                    blur: 20.0,
+                    spread: 0.0,
+                    color: egui::Color32::from_black_alpha(50),
+                })
+            )
             .show(ctx, |ui| {
+                
+                // 标题区域
+                ui.vertical_centered(|ui| {
+                    ui.add_space(16.0);
+                    ui.colored_label(self.theme.primary_color, 
+                        egui::RichText::new("➕ 添加新环境变量")
+                            .size(20.0)
+                            .strong()
+                    );
+                    ui.colored_label(self.theme.text_secondary, 
+                        "创建一个新的用户级环境变量");
+                    ui.add_space(24.0);
+                });
+                
+                // 表单区域
                 ui.vertical(|ui| {
+                    // 变量名输入
                     ui.horizontal(|ui| {
-                        ui.label("Name:");
-                        ui.text_edit_singleline(&mut self.new_variable_name);
+                        ui.add_sized([80.0, 24.0], egui::Label::new(
+                            egui::RichText::new("🏷 变量名:")
+                                .color(self.theme.text_primary)
+                                .strong()
+                        ));
+                        
+                        let name_edit = egui::TextEdit::singleline(&mut self.new_variable_name)
+                            .desired_width(320.0)
+                            .hint_text("例如: MY_CUSTOM_PATH")
+                            .font(egui::TextStyle::Monospace);
+                        
+                        ui.add(name_edit);
                     });
                     
+                    ui.add_space(16.0);
+                    
+                    // 变量值输入
                     ui.horizontal(|ui| {
-                        ui.label("Value:");
-                        ui.text_edit_multiline(&mut self.new_variable_value);
+                        ui.add_sized([80.0, 24.0], egui::Label::new(
+                            egui::RichText::new("📝 变量值:")
+                                .color(self.theme.text_primary)
+                                .strong()
+                        ));
+                        
+                        let value_edit = egui::TextEdit::multiline(&mut self.new_variable_value)
+                            .desired_width(320.0)
+                            .desired_rows(4)
+                            .hint_text("输入变量的值...")
+                            .font(egui::TextStyle::Monospace);
+                        
+                        ui.add(value_edit);
                     });
                     
+                    ui.add_space(16.0);
+                    
+                    // 作用域选择
                     ui.horizontal(|ui| {
-                        ui.label("Scope:");
-                        ui.radio_value(&mut self.new_variable_scope, EnvScope::User, "User");
-                        // 禁用系统变量选项以防止误操作
-                        ui.add_enabled(false, egui::RadioButton::new(false, "System (Read-only)"));
+                        ui.add_sized([80.0, 24.0], egui::Label::new(
+                            egui::RichText::new("🎯 作用域:")
+                                .color(self.theme.text_primary)
+                                .strong()
+                        ));
+                        
+                        // 用户作用域（启用）
+                        egui::Frame::none()
+                            .fill(self.theme.success_color.gamma_multiply(0.1))
+                            .stroke(Stroke::new(2.0, self.theme.success_color))
+                            .rounding(Rounding::same(8.0))
+                            .inner_margin(egui::Margin::symmetric(12.0, 8.0))
+                            .show(ui, |ui| {
+                                ui.horizontal(|ui| {
+                                    ui.colored_label(self.theme.success_color, "👤");
+                                    ui.colored_label(self.theme.success_color, 
+                                        egui::RichText::new("用户")
+                                            .strong()
+                                    );
+                                    ui.colored_label(self.theme.text_secondary, "(推荐)");
+                                });
+                            });
+                        
+                        ui.add_space(16.0);
+                        
+                        // 系统作用域（禁用）
+                        egui::Frame::none()
+                            .fill(self.theme.text_secondary.gamma_multiply(0.05))
+                            .stroke(Stroke::new(1.0, self.theme.text_secondary.gamma_multiply(0.3)))
+                            .rounding(Rounding::same(8.0))
+                            .inner_margin(egui::Margin::symmetric(12.0, 8.0))
+                            .show(ui, |ui| {
+                                ui.horizontal(|ui| {
+                                    ui.colored_label(self.theme.text_secondary, "🖥");
+                                    ui.colored_label(self.theme.text_secondary, 
+                                        egui::RichText::new("系统")
+                                            .strikethrough()
+                                    );
+                                    ui.colored_label(self.theme.text_secondary, "(已禁用)");
+                                });
+                            });
                     });
                     
-                    if !has_admin_permission {
-                        ui.colored_label(egui::Color32::RED, "⚠ Admin privileges required for system variables");
-                    }
+                    ui.add_space(24.0);
                     
+                    // 按钮区域
                     ui.horizontal(|ui| {
-                        if ui.button("Add").clicked() {
+                        ui.add_space(80.0); // 对齐到标签位置
+                        
+                        if egui::Button::new("✅ 添加变量").ui(ui).clicked() {
                             add_clicked = true;
                         }
-                        if ui.button("Cancel").clicked() {
+                        
+                        ui.add_space(12.0);
+                        
+                        if egui::Button::new("❌ 取消").ui(ui).clicked() {
                             cancel_clicked = true;
                         }
                     });
+                    
+                    ui.add_space(16.0);
+                    
+                    // 提示信息
+                    egui::Frame::none()
+                        .fill(self.theme.primary_color.gamma_multiply(0.05))
+                        .stroke(Stroke::new(1.0, self.theme.primary_color.gamma_multiply(0.3)))
+                        .rounding(Rounding::same(8.0))
+                        .inner_margin(egui::Margin::same(12.0))
+                        .show(ui, |ui| {
+                            ui.horizontal(|ui| {
+                                ui.colored_label(self.theme.primary_color, "💡");
+                                ui.vertical(|ui| {
+                                    ui.colored_label(self.theme.text_secondary, 
+                                        "提示: 为了系统安全，只能创建用户级环境变量。");
+                                    ui.colored_label(self.theme.text_secondary, 
+                                        "变量名建议使用大写字母和下划线。");
+                                });
+                            });
+                        });
                 });
             });
         
@@ -428,74 +1496,268 @@ impl EnvManagerApp {
         let mut cancel_clicked = false;
         let mut config_to_save = None;
         let mut refresh_clicked = false;
+        let mut toggle_theme = false;
         
-        egui::Window::new("Settings")
+        egui::Window::new("")
             .open(&mut self.show_settings)
+            .collapsible(false)
+            .resizable(false)
+            .anchor(egui::Align2::CENTER_CENTER, [0.0, 0.0])
+            .fixed_size([520.0, 600.0])
+            .frame(egui::Frame::window(&ctx.style())
+                .fill(self.theme.surface_color)
+                .stroke(Stroke::new(2.0, self.theme.primary_color))
+                .rounding(Rounding::same(16.0))
+                .shadow(egui::epaint::Shadow {
+                    offset: Vec2::new(0.0, 4.0),
+                    blur: 20.0,
+                    spread: 0.0,
+                    color: egui::Color32::from_black_alpha(50),
+                })
+            )
             .show(ctx, |ui| {
                 let mut config = self.state.get_config();
                 
+                // 标题区域
+                ui.vertical_centered(|ui| {
+                    ui.add_space(16.0);
+                    ui.colored_label(self.theme.primary_color, 
+                        egui::RichText::new("⚙️ 应用设置")
+                            .size(20.0)
+                            .strong()
+                    );
+                    ui.colored_label(self.theme.text_secondary, 
+                        "自定义您的环境变量管理体验");
+                    ui.add_space(24.0);
+                });
+                
+                // 设置项区域
                 ui.vertical(|ui| {
-                    ui.heading("General Settings");
-                    
-                    let old_auto_refresh = config.auto_refresh;
-                    ui.checkbox(&mut config.auto_refresh, "Auto refresh after changes");
-                    
-                    // 如果自动刷新设置改变，立即应用
-                    if old_auto_refresh != config.auto_refresh {
-                        self.state.set_auto_refresh(config.auto_refresh);
-                    }
-                    
-                    ui.checkbox(&mut config.confirm_deletion, "Confirm before deletion");
-                    ui.checkbox(&mut config.backup_enabled, "Enable automatic backups");
-                    
-                    ui.add(egui::Slider::new(&mut config.backup_interval_days, 1..=30
-                    ).text("Backup interval (days)"));
-                    
-                    ui.separator();
-                    
-                    ui.heading("Environment Control");
-                    
-                    if ui.button("🔄 Manual Refresh Environment").clicked() {
-                        refresh_clicked = true;
-                    }
-                    
-                    ui.separator();
-                    
-                    ui.horizontal(|ui| {
-                        ui.label("Log level:");
-                        egui::ComboBox::from_label("")
-                            .selected_text(&config.log_level)
-                            .show_ui(ui, |ui| {
-                                ui.selectable_value(&mut config.log_level, "error".to_string(), "Error");
-                                ui.selectable_value(&mut config.log_level, "warn".to_string(), "Warn");
-                                ui.selectable_value(&mut config.log_level, "info".to_string(), "Info");
-                                ui.selectable_value(&mut config.log_level, "debug".to_string(), "Debug");
-                                ui.selectable_value(&mut config.log_level, "trace".to_string(), "Trace");
+                    // 自动刷新设置
+                    egui::Frame::none()
+                        .fill(self.theme.surface_color)
+                        .stroke(Stroke::new(1.0, self.theme.border_color))
+                        .rounding(Rounding::same(8.0))
+                        .inner_margin(egui::Margin::same(12.0))
+                        .show(ui, |ui| {
+                            ui.horizontal(|ui| {
+                                ui.colored_label(self.theme.primary_color, "🔄");
+                                ui.vertical(|ui| {
+                                    ui.colored_label(self.theme.text_primary, 
+                                        egui::RichText::new("自动刷新")
+                                            .strong()
+                                    );
+                                    ui.colored_label(self.theme.text_secondary, 
+                                        "修改后自动刷新环境变量列表");
+                                });
+                                ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                                    let old_auto_refresh = config.auto_refresh;
+                                    ui.add(egui::Checkbox::new(&mut config.auto_refresh, ""));
+                                    // 如果自动刷新设置改变，立即应用
+                                    if old_auto_refresh != config.auto_refresh {
+                                        self.state.set_auto_refresh(config.auto_refresh);
+                                    }
+                                });
                             });
+                        });
+                    
+                    ui.add_space(12.0);
+                    
+                    // 删除确认设置
+                    egui::Frame::none()
+                        .fill(self.theme.surface_color)
+                        .stroke(Stroke::new(1.0, self.theme.border_color))
+                        .rounding(Rounding::same(8.0))
+                        .inner_margin(egui::Margin::same(12.0))
+                        .show(ui, |ui| {
+                            ui.horizontal(|ui| {
+                                ui.colored_label(self.theme.warning_color, "⚠️");
+                                ui.vertical(|ui| {
+                                    ui.colored_label(self.theme.text_primary, 
+                                        egui::RichText::new("删除确认")
+                                            .strong()
+                                    );
+                                    ui.colored_label(self.theme.text_secondary, 
+                                        "删除变量前显示确认对话框");
+                                });
+                                ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                                    ui.add(egui::Checkbox::new(&mut config.confirm_deletion, ""));
+                                });
+                            });
+                        });
+                    
+                    ui.add_space(12.0);
+                    
+                    // 备份设置
+                    egui::Frame::none()
+                        .fill(self.theme.surface_color)
+                        .stroke(Stroke::new(1.0, self.theme.border_color))
+                        .rounding(Rounding::same(8.0))
+                        .inner_margin(egui::Margin::same(12.0))
+                        .show(ui, |ui| {
+                            ui.vertical(|ui| {
+                                ui.horizontal(|ui| {
+                                    ui.colored_label(self.theme.success_color, "💾");
+                                    ui.vertical(|ui| {
+                                        ui.colored_label(self.theme.text_primary, 
+                                            egui::RichText::new("自动备份")
+                                                .strong()
+                                        );
+                                        ui.colored_label(self.theme.text_secondary, 
+                                            "在修改前自动备份环境变量");
+                                    });
+                                    ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                                        ui.add(egui::Checkbox::new(&mut config.backup_enabled, ""));
+                                    });
+                                });
+                                
+                                if config.backup_enabled {
+                                    ui.add_space(8.0);
+                                    ui.horizontal(|ui| {
+                                        ui.add_space(32.0);
+                                        ui.colored_label(self.theme.text_secondary, "备份间隔:");
+                                        ui.add(egui::Slider::new(&mut config.backup_interval_days, 1..=30)
+                                            .text("天"));
+                                    });
+                                }
+                            });
+                        });
+                    
+                    ui.add_space(12.0);
+                    
+                    // 日志级别设置
+                    egui::Frame::none()
+                        .fill(self.theme.surface_color)
+                        .stroke(Stroke::new(1.0, self.theme.border_color))
+                        .rounding(Rounding::same(8.0))
+                        .inner_margin(egui::Margin::same(12.0))
+                        .show(ui, |ui| {
+                            ui.horizontal(|ui| {
+                                ui.colored_label(self.theme.primary_color, "📝");
+                                ui.vertical(|ui| {
+                                    ui.colored_label(self.theme.text_primary, 
+                                        egui::RichText::new("日志级别")
+                                            .strong()
+                                    );
+                                    ui.colored_label(self.theme.text_secondary, 
+                                        "设置应用程序日志详细程度");
+                                });
+                                ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                                let log_display = match config.log_level.as_str() {
+                                    "error" => "❌ 错误",
+                                    "warn" => "⚠️ 警告",
+                                    "info" => "ℹ️ 信息",
+                                    "debug" => "🐛 调试",
+                                    "trace" => "🔍 跟踪",
+                                    _ => "ℹ️ 信息",
+                                };
+                                egui::ComboBox::from_id_source("log_level")
+                                    .selected_text(log_display)
+                                    .show_ui(ui, |ui| {
+                                        ui.selectable_value(&mut config.log_level, "error".to_string(), "❌ 错误");
+                                        ui.selectable_value(&mut config.log_level, "warn".to_string(), "⚠️ 警告");
+                                        ui.selectable_value(&mut config.log_level, "info".to_string(), "ℹ️ 信息");
+                                        ui.selectable_value(&mut config.log_level, "debug".to_string(), "🐛 调试");
+                                        ui.selectable_value(&mut config.log_level, "trace".to_string(), "🔍 跟踪");
+                                    });
+                                });
+                            });
+                        });
+                    
+                    ui.add_space(12.0);
+                    
+                    // 主题设置
+                    egui::Frame::none()
+                        .fill(self.theme.surface_color)
+                        .stroke(Stroke::new(1.0, self.theme.border_color))
+                        .rounding(Rounding::same(8.0))
+                        .inner_margin(egui::Margin::same(12.0))
+                        .show(ui, |ui| {
+                            ui.horizontal(|ui| {
+                                let theme_icon = if self.is_dark_mode { "🌙" } else { "☀️" };
+                                ui.colored_label(self.theme.primary_color, theme_icon);
+                                ui.vertical(|ui| {
+                                    ui.colored_label(self.theme.text_primary, 
+                                    egui::RichText::new("主题模式")
+                                        .strong()
+                                );
+                                ui.colored_label(self.theme.text_secondary, 
+                                    "选择应用程序的外观主题");
+                            });
+                            ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                                if egui::Button::new(
+                                    if self.is_dark_mode { "🌙 深色" } else { "☀️ 浅色" }
+                                ).ui(ui).clicked() {
+                                    toggle_theme = true;
+                                    // 同步更新配置
+                                    config.theme = if !self.is_dark_mode { "dark".to_string() } else { "light".to_string() };
+                                }
+                            });
+                        });
                     });
                     
-                    ui.horizontal(|ui| {
-                        ui.label("Theme:");
-                        egui::ComboBox::from_label("")
-                            .selected_text(&config.theme)
-                            .show_ui(ui, |ui| {
-                                ui.selectable_value(&mut config.theme, "light".to_string(), "Light");
-                                ui.selectable_value(&mut config.theme, "dark".to_string(), "Dark");
-                                ui.selectable_value(&mut config.theme, "high-contrast".to_string(), "High Contrast");
+                    ui.add_space(12.0);
+                    
+                    // 环境控制
+                    egui::Frame::none()
+                        .fill(self.theme.surface_color)
+                        .stroke(Stroke::new(1.0, self.theme.border_color))
+                        .rounding(Rounding::same(8.0))
+                        .inner_margin(egui::Margin::same(12.0))
+                        .show(ui, |ui| {
+                            ui.horizontal(|ui| {
+                                ui.colored_label(self.theme.accent_color, "🔄");
+                                ui.vertical(|ui| {
+                                    ui.colored_label(self.theme.text_primary, 
+                                        egui::RichText::new("手动刷新")
+                                            .strong()
+                                    );
+                                    ui.colored_label(self.theme.text_secondary, 
+                                        "立即刷新环境变量列表");
+                                });
+                                ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                                    if egui::Button::new("🔄 刷新")
+                                        .fill(self.theme.accent_color)
+                                        .rounding(Rounding::same(6.0))
+                                        .ui(ui).clicked() {
+                                        refresh_clicked = true;
+                                    }
+                                });
                             });
-                    });
+                        });
                     
-                    ui.separator();
+                    ui.add_space(24.0);
                     
+                    // 按钮区域
                     ui.horizontal(|ui| {
-                        if ui.button("Save Settings").clicked() {
+                        ui.add_space(ui.available_width() / 2.0 - 120.0);
+                        
+                        if egui::Button::new("💾 保存设置")
+                            .fill(self.theme.success_color)
+                            .rounding(Rounding::same(6.0))
+                            .ui(ui).clicked() {
                             save_clicked = true;
                             config_to_save = Some(config.clone());
                         }
                         
-                        if ui.button("Cancel").clicked() {
+                        ui.add_space(12.0);
+                        
+                        if egui::Button::new("❌ 取消")
+                            .fill(self.theme.text_secondary)
+                            .rounding(Rounding::same(6.0))
+                            .ui(ui).clicked() {
                             cancel_clicked = true;
                         }
+                    });
+                    
+                    ui.add_space(16.0);
+                    
+                    // 版本信息
+                    ui.vertical_centered(|ui| {
+                        ui.colored_label(self.theme.text_secondary, 
+                            egui::RichText::new("环境变量管理器 v1.0.0")
+                                .size(12.0)
+                        );
                     });
                 });
             });
@@ -526,27 +1788,87 @@ impl EnvManagerApp {
         if cancel_clicked {
             self.show_settings = false;
         }
+        
+        if toggle_theme {
+            self.toggle_theme();
+        }
     }
 
     fn render_status_bar(&mut self, ui: &mut egui::Ui) {
-        ui.horizontal(|ui| {
-            let auto_refresh = self.state.get_auto_refresh();
-            ui.label(format!("Variables: {}", self.variables.len()));
-            ui.label(format!("Auto refresh: {}", if auto_refresh { "ON" } else { "OFF" }));
-            
-            if let Some(error) = self.state.get_error_message() {
-                ui.colored_label(egui::Color32::RED, format!("Error: {}", error));
-                if ui.button("Clear").clicked() {
-                    self.state.set_error_message(None);
-                }
-            }
-            
-            if let Some(info) = self.state.get_info_message() {
-                ui.colored_label(egui::Color32::GREEN, format!("Info: {}", info));
-                if ui.button("Clear").clicked() {
-                    self.state.set_info_message(None);
-                }
-            }
+        self.modern_card(ui, |ui| {
+            ui.horizontal(|ui| {
+                // 变量统计
+                ui.horizontal(|ui| {
+                    ui.colored_label(self.theme.primary_color, "📊");
+                    ui.colored_label(self.theme.text_primary, 
+                        format!("变量总数: {}", self.variables.len()));
+                });
+                
+                ui.add_space(16.0);
+                
+                // 自动刷新状态
+                let auto_refresh = self.state.get_auto_refresh();
+                ui.horizontal(|ui| {
+                    let (icon, color) = if auto_refresh {
+                        ("🔄", self.theme.success_color)
+                    } else {
+                        ("⏸️", self.theme.text_secondary)
+                    };
+                    ui.colored_label(color, icon);
+                    ui.colored_label(self.theme.text_primary, 
+                        format!("自动刷新: {}", if auto_refresh { "开启" } else { "关闭" }));
+                });
+                
+                ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                    // 错误消息
+                    if let Some(error) = self.state.get_error_message() {
+                        if self.modern_small_button(ui, "✖ 清除", self.theme.error_color).clicked() {
+                            self.state.set_error_message(None);
+                        }
+                        
+                        ui.add_space(8.0);
+                        
+                        egui::Frame::none()
+                            .fill(self.theme.error_color.gamma_multiply(0.1))
+                            .stroke(Stroke::new(1.0, self.theme.error_color))
+                            .rounding(Rounding::same(6.0))
+                            .inner_margin(egui::Margin::symmetric(8.0, 4.0))
+                            .show(ui, |ui| {
+                                ui.horizontal(|ui| {
+                                    ui.colored_label(self.theme.error_color, "❌");
+                                    ui.colored_label(self.theme.error_color, 
+                                        egui::RichText::new(format!("错误: {}", error))
+                                            .size(12.0)
+                                    );
+                                });
+                            });
+                    }
+                    
+                    // 信息消息
+                    if let Some(info) = self.state.get_info_message() {
+                        if self.modern_small_button(ui, "✖ 清除", self.theme.success_color).clicked() {
+                            self.state.set_info_message(None);
+                        }
+                        
+                        ui.add_space(8.0);
+                        
+                        egui::Frame::none()
+                            .fill(self.theme.success_color.gamma_multiply(0.1))
+                            .stroke(Stroke::new(1.0, self.theme.success_color))
+                            .rounding(Rounding::same(6.0))
+                            .inner_margin(egui::Margin::symmetric(8.0, 4.0))
+                            .show(ui, |ui| {
+                                ui.horizontal(|ui| {
+                                    ui.colored_label(self.theme.success_color, "✅");
+                                    ui.colored_label(self.theme.success_color, 
+                                        egui::RichText::new(format!("信息: {}", info))
+                                            .size(12.0)
+                                    );
+                                });
+                            });
+                    }
+                });
+            });
         });
     }
     
@@ -554,25 +1876,98 @@ impl EnvManagerApp {
         let mut confirm_clicked = false;
         let mut cancel_clicked = false;
         
-        egui::Window::new("Confirm Delete")
+        egui::Window::new("")
             .open(&mut self.show_delete_confirm)
+            .collapsible(false)
+            .resizable(false)
+            .anchor(egui::Align2::CENTER_CENTER, [0.0, 0.0])
+            .fixed_size([400.0, 280.0])
+            .frame(egui::Frame::window(&ctx.style())
+                .fill(self.theme.surface_color)
+                .stroke(Stroke::new(2.0, self.theme.warning_color))
+                .rounding(Rounding::same(16.0))
+                .shadow(egui::epaint::Shadow {
+                    offset: Vec2::new(0.0, 4.0),
+                    blur: 20.0,
+                    spread: 0.0,
+                    color: egui::Color32::from_black_alpha(50),
+                })
+            )
             .show(ctx, |ui| {
-                ui.vertical(|ui| {
+                
+                ui.vertical_centered(|ui| {
+                    ui.add_space(20.0);
+                    
+                    // 警告图标
+                    ui.colored_label(self.theme.warning_color, 
+                        egui::RichText::new("⚠️")
+                            .size(48.0)
+                    );
+                    
+                    ui.add_space(16.0);
+                    
+                    // 标题
+                    ui.colored_label(self.theme.text_primary, 
+                        egui::RichText::new("确认删除")
+                            .size(18.0)
+                            .strong()
+                    );
+                    
+                    ui.add_space(12.0);
+                    
                     if let Some(var_name) = &self.delete_confirm_variable {
-                        ui.label(format!("Are you sure you want to delete the variable '{}'?", var_name));
-                        ui.add_space(10.0);
-                        ui.colored_label(egui::Color32::RED, "⚠ This action cannot be undone.");
-                        ui.add_space(10.0);
+                        // 描述文本
+                        ui.colored_label(self.theme.text_secondary, 
+                            "您确定要删除这个环境变量吗？");
                         
+                        ui.add_space(8.0);
+                        
+                        // 变量名显示
+                        egui::Frame::none()
+                            .fill(self.theme.surface_color)
+                            .stroke(Stroke::new(1.0, self.theme.border_color))
+                            .rounding(Rounding::same(8.0))
+                            .inner_margin(12.0)
+                            .show(ui, |ui| {
+                                ui.horizontal(|ui| {
+                                    ui.colored_label(self.theme.error_color, "🗑️");
+                                    ui.colored_label(self.theme.text_primary, 
+                                        egui::RichText::new("变量名:")
+                                            .strong()
+                                    );
+                                    ui.colored_label(self.theme.error_color, 
+                                        egui::RichText::new(var_name)
+                                            .monospace()
+                                            .strong()
+                                    );
+                                });
+                            });
+                        
+                        ui.add_space(12.0);
+                        
+                        // 警告信息
+                        ui.colored_label(self.theme.error_color, 
+                            "⚠ 此操作无法撤销");
+                        
+                        ui.add_space(24.0);
+                        
+                        // 按钮区域
                         ui.horizontal(|ui| {
-                            if ui.button("🗑 Delete").clicked() {
+                            ui.add_space(ui.available_width() / 2.0 - 100.0);
+                            
+                            if egui::Button::new("🗑️ 删除").ui(ui).clicked() {
                                 confirm_clicked = true;
                             }
-                            if ui.button("Cancel").clicked() {
+                            
+                            ui.add_space(12.0);
+                            
+                            if egui::Button::new("❌ 取消").ui(ui).clicked() {
                                 cancel_clicked = true;
                             }
                         });
                     }
+                    
+                    ui.add_space(20.0);
                 });
             });
         
@@ -589,10 +1984,45 @@ impl EnvManagerApp {
         let mut confirm_clicked = false;
         let mut cancel_clicked = false;
         
-        egui::Window::new("Confirm Batch Delete")
+        egui::Window::new("")
             .open(&mut self.show_batch_delete_confirm)
+            .collapsible(false)
+            .resizable(false)
+            .anchor(egui::Align2::CENTER_CENTER, [0.0, 0.0])
+            .fixed_size([480.0, 380.0])
+            .frame(egui::Frame::window(&ctx.style())
+                .fill(self.theme.surface_color)
+                .stroke(Stroke::new(2.0, self.theme.warning_color))
+                .rounding(Rounding::same(16.0))
+                .shadow(egui::epaint::Shadow {
+                    offset: Vec2::new(0.0, 4.0),
+                    blur: 20.0,
+                    spread: 0.0,
+                    color: egui::Color32::from_black_alpha(50),
+                })
+            )
             .show(ctx, |ui| {
-                ui.vertical(|ui| {
+                
+                ui.vertical_centered(|ui| {
+                    ui.add_space(20.0);
+                    
+                    // 警告图标
+                    ui.colored_label(self.theme.warning_color, 
+                        egui::RichText::new("⚠️")
+                            .size(48.0)
+                    );
+                    
+                    ui.add_space(16.0);
+                    
+                    // 标题
+                    ui.colored_label(self.theme.text_primary, 
+                        egui::RichText::new("批量删除确认")
+                            .size(18.0)
+                            .strong()
+                    );
+                    
+                    ui.add_space(12.0);
+                    
                     let user_vars_count = self.selected_variables.iter()
                         .filter(|name| {
                             self.variables.iter()
@@ -604,28 +2034,89 @@ impl EnvManagerApp {
                     
                     let system_vars_count = self.selected_variables.len() - user_vars_count;
                     
-                    ui.label(format!("Are you sure you want to delete {} selected variables?", self.selected_variables.len()));
-                    ui.add_space(5.0);
+                    // 描述文本
+                    ui.colored_label(self.theme.text_secondary, 
+                        format!("您确定要删除 {} 个选中的环境变量吗？", self.selected_variables.len()));
                     
-                    if user_vars_count > 0 {
-                        ui.label(format!("• {} user variables will be deleted", user_vars_count));
-                    }
-                    if system_vars_count > 0 {
-                        ui.colored_label(egui::Color32::YELLOW, format!("• {} system variables will be skipped (read-only)", system_vars_count));
-                    }
+                    ui.add_space(16.0);
                     
-                    ui.add_space(10.0);
-                    ui.colored_label(egui::Color32::RED, "⚠ This action cannot be undone.");
-                    ui.add_space(10.0);
+                    // 统计信息卡片
+                    egui::Frame::none()
+                        .fill(self.theme.surface_color)
+                        .stroke(Stroke::new(1.0, self.theme.border_color))
+                        .rounding(Rounding::same(8.0))
+                        .inner_margin(egui::Margin::same(12.0))
+                        .show(ui, |ui| {
+                            ui.vertical(|ui| {
+                                ui.colored_label(self.theme.text_primary, 
+                                    egui::RichText::new("删除统计")
+                                        .strong()
+                                );
+                                
+                                ui.add_space(8.0);
+                                
+                                if user_vars_count > 0 {
+                                    ui.horizontal(|ui| {
+                                        ui.colored_label(self.theme.success_color, "✅");
+                                        ui.colored_label(self.theme.text_primary, 
+                                            format!("将删除 {} 个用户变量", user_vars_count));
+                                    });
+                                }
+                                
+                                if system_vars_count > 0 {
+                                    ui.horizontal(|ui| {
+                                        ui.colored_label(self.theme.warning_color, "⏭️");
+                                        ui.colored_label(self.theme.warning_color, 
+                                            format!("将跳过 {} 个系统变量（只读）", system_vars_count));
+                                    });
+                                }
+                            });
+                        });
                     
+                    ui.add_space(16.0);
+                    
+                    // 警告信息
+                    egui::Frame::none()
+                        .fill(self.theme.error_color.gamma_multiply(0.1))
+                        .stroke(Stroke::new(1.0, self.theme.error_color))
+                        .rounding(Rounding::same(8.0))
+                        .inner_margin(egui::Margin::same(12.0))
+                        .show(ui, |ui| {
+                            ui.horizontal(|ui| {
+                                ui.colored_label(self.theme.error_color, "⚠️");
+                                ui.colored_label(self.theme.error_color, 
+                                    egui::RichText::new("此操作无法撤销，请谨慎操作！")
+                                        .strong()
+                                );
+                            });
+                        });
+                    
+                    ui.add_space(24.0);
+                    
+                    // 按钮区域
                     ui.horizontal(|ui| {
-                        if ui.button("🗑 Delete").clicked() {
+                        ui.add_space(ui.available_width() / 2.0 - 120.0);
+                        
+                        if egui::Button::new("🗑️ 批量删除")
+                            .fill(self.theme.error_color)
+                            .rounding(Rounding::same(6.0))
+                            .ui(ui)
+                            .clicked() {
                             confirm_clicked = true;
                         }
-                        if ui.button("Cancel").clicked() {
+                        
+                        ui.add_space(12.0);
+                        
+                        if egui::Button::new("❌ 取消")
+                            .fill(self.theme.text_secondary)
+                            .rounding(Rounding::same(6.0))
+                            .ui(ui)
+                            .clicked() {
                             cancel_clicked = true;
                         }
                     });
+                    
+                    ui.add_space(20.0);
                 });
             });
         
@@ -636,13 +2127,367 @@ impl EnvManagerApp {
             self.show_batch_delete_confirm = false;
         }
     }
+    
+    fn render_import_dialog(&mut self, ctx: &egui::Context) {
+        let theme = self.theme.clone();
+        
+        let mut file_import_clicked = false;
+        let mut clipboard_import_clicked = false;
+        let mut cancel_clicked = false;
+        
+        egui::Window::new("导入环境变量")
+            .collapsible(false)
+            .resizable(true)
+            .default_size([500.0, 400.0])
+            .anchor(egui::Align2::CENTER_CENTER, egui::Vec2::ZERO)
+            .show(ctx, |ui| {
+                egui::Frame::none()
+                    .fill(theme.card_background)
+                    .rounding(egui::Rounding::same(8.0))
+                    .stroke(egui::Stroke::new(1.0, theme.border_color))
+                    .inner_margin(egui::Margin::same(16.0))
+                    .show(ui, |ui| {
+                        ui.vertical(|ui| {
+                            ui.add_space(10.0);
+                            
+                            ui.label(
+                                egui::RichText::new("📥 导入环境变量")
+                                    .size(18.0)
+                                    .color(theme.primary_color)
+                            );
+                            
+                            ui.add_space(15.0);
+                            
+                            ui.horizontal(|ui| {
+                                if ui.button("📁 从文件导入").clicked() {
+                                    file_import_clicked = true;
+                                }
+                                
+                                ui.add_space(10.0);
+                                
+                                if ui.button("📋 从剪贴板导入").clicked() {
+                                    clipboard_import_clicked = true;
+                                }
+                            });
+                            
+                            ui.add_space(15.0);
+                            
+                            ui.label(
+                                egui::RichText::new("支持格式：")
+                                    .size(14.0)
+                                    .color(theme.text_secondary)
+                            );
+                            
+                            ui.label("• KEY=VALUE (每行一个)");
+                            ui.label("• JSON 格式");
+                            ui.label("• .env 文件格式");
+                            
+                            ui.add_space(20.0);
+                            
+                            ui.horizontal(|ui| {
+                                if ui.button("取消").clicked() {
+                                    cancel_clicked = true;
+                                }
+                            });
+                            
+                            ui.add_space(10.0);
+                        });
+                    });
+            });
+            
+        // 在闭包外处理状态更新
+        if file_import_clicked {
+            // TODO: 实现文件导入功能
+        }
+        
+        if clipboard_import_clicked {
+            // TODO: 实现剪贴板导入功能
+        }
+        
+        if cancel_clicked {
+            self.show_import_dialog = false;
+        }
+    }
+    
+    fn render_export_dialog(&mut self, ctx: &egui::Context) {
+        let theme = self.theme.clone();
+        
+        let mut export_file_clicked = false;
+        let mut export_clipboard_clicked = false;
+        let mut cancel_clicked = false;
+        
+        egui::Window::new("导出环境变量")
+            .collapsible(false)
+            .resizable(true)
+            .default_size([500.0, 400.0])
+            .anchor(egui::Align2::CENTER_CENTER, egui::Vec2::ZERO)
+            .show(ctx, |ui| {
+                egui::Frame::none()
+                    .fill(theme.card_background)
+                    .rounding(egui::Rounding::same(8.0))
+                    .stroke(egui::Stroke::new(1.0, theme.border_color))
+                    .inner_margin(egui::Margin::same(16.0))
+                    .show(ui, |ui| {
+                        ui.vertical(|ui| {
+                            ui.add_space(10.0);
+                            
+                            ui.label(
+                                egui::RichText::new("📤 导出环境变量")
+                                    .size(18.0)
+                                    .color(theme.primary_color)
+                            );
+                            
+                            ui.add_space(15.0);
+                            
+                            ui.horizontal(|ui| {
+                                if ui.button("💾 导出到文件").clicked() {
+                                    export_file_clicked = true;
+                                }
+                                
+                                ui.add_space(10.0);
+                                
+                                if ui.button("📋 复制到剪贴板").clicked() {
+                                    export_clipboard_clicked = true;
+                                }
+                            });
+                            
+                            ui.add_space(15.0);
+                            
+                            ui.label(
+                                egui::RichText::new("导出格式：")
+                                    .size(14.0)
+                                    .color(theme.text_secondary)
+                            );
+                            
+                            ui.horizontal(|ui| {
+                                ui.radio_value(&mut true, true, ".env 格式");
+                                ui.radio_value(&mut false, true, "JSON 格式");
+                                ui.radio_value(&mut false, true, "PowerShell 格式");
+                            });
+                            
+                            ui.add_space(10.0);
+                            
+                            ui.checkbox(&mut true, "仅导出用户变量");
+                            ui.checkbox(&mut false, "包含系统变量");
+                            
+                            ui.add_space(20.0);
+                            
+                            ui.horizontal(|ui| {
+                                if ui.button("取消").clicked() {
+                                    cancel_clicked = true;
+                                }
+                            });
+                            
+                            ui.add_space(10.0);
+                        });
+                    });
+            });
+            
+        // 在闭包外处理状态更新
+        if export_file_clicked {
+            // TODO: 实现文件导出功能
+        }
+        
+        if export_clipboard_clicked {
+            // TODO: 实现剪贴板导出功能
+        }
+        
+        if cancel_clicked {
+            self.show_export_dialog = false;
+        }
+    }
+    
+    fn render_variable_details(&mut self, ctx: &egui::Context) {
+        if let Some(var_name) = &self.selected_detail_variable.clone() {
+            // 克隆变量数据以避免借用冲突
+            if let Some(variable) = self.variables.iter().find(|v| &v.name == var_name).cloned() {
+                let theme = self.theme.clone(); // 克隆主题以避免借用冲突
+                let var_name_clone = var_name.clone();
+                
+                let window_response = egui::Window::new(format!("变量详情 - {}", var_name))
+                    .collapsible(false)
+                    .resizable(true)
+                    .default_size([600.0, 500.0])
+                    .anchor(egui::Align2::CENTER_CENTER, egui::Vec2::ZERO)
+                    .show(ctx, |ui| {
+                        // 使用简单的 Frame 替代 modern_card 以避免借用冲突
+                        egui::Frame::none()
+                            .fill(theme.card_background)
+                            .rounding(12.0)
+                            .inner_margin(20.0)
+                            .stroke(egui::Stroke::new(1.0, theme.border_color))
+                            .show(ui, |ui| {
+                            ui.vertical(|ui| {
+                                ui.add_space(10.0);
+                                
+                                // 标题和作用域标识
+                                ui.horizontal(|ui| {
+                                    ui.label(
+                                    egui::RichText::new(&variable.name)
+                                        .size(20.0)
+                                        .color(theme.text_primary)
+                                        .strong()
+                                );
+                                    
+                                    ui.add_space(10.0);
+                                    
+                                    let (scope_text, scope_color) = match variable.scope {
+                                        EnvScope::User => ("用户", theme.user_variable_accent),
+                                        EnvScope::System => ("系统", theme.system_variable_accent),
+                                    };
+                                    
+                                    ui.label(
+                                        egui::RichText::new(scope_text)
+                                            .size(12.0)
+                                            .color(scope_color)
+                                            .background_color(scope_color.gamma_multiply(0.1))
+                                    );
+                                });
+                                
+                                ui.add_space(15.0);
+                                
+                                // 变量值
+                                ui.label(
+                                    egui::RichText::new("值：")
+                                        .size(14.0)
+                                        .color(theme.text_secondary)
+                                        .strong()
+                                );
+                                
+                                ui.add_space(5.0);
+                                
+                                egui::ScrollArea::vertical()
+                                    .max_height(150.0)
+                                    .show(ui, |ui| {
+                                        ui.add(
+                                            egui::TextEdit::multiline(&mut variable.value.clone())
+                                                .desired_width(f32::INFINITY)
+                                                .desired_rows(5)
+                                                .interactive(false)
+                                        );
+                                    });
+                                
+                                ui.add_space(15.0);
+                                
+                                // 元数据信息
+                                ui.label(
+                                    egui::RichText::new("元数据：")
+                                        .size(14.0)
+                                        .color(theme.text_secondary)
+                                        .strong()
+                                );
+                                
+                                ui.add_space(5.0);
+                                
+                                ui.horizontal(|ui| {
+                                    ui.label("创建时间：");
+                                    ui.label(
+                                        egui::RichText::new("2024-01-15 10:30:00")
+                                            .color(theme.text_primary)
+                                    );
+                                });
+                                
+                                ui.horizontal(|ui| {
+                                    ui.label("最后修改：");
+                                    ui.label(
+                                        egui::RichText::new("2024-01-20 14:25:30")
+                                            .color(theme.text_primary)
+                                    );
+                                });
+                                
+                                ui.horizontal(|ui| {
+                                    ui.label("字符长度：");
+                                    ui.label(
+                                        egui::RichText::new(format!("{} 字符", variable.value.len()))
+                                            .color(theme.text_primary)
+                                    );
+                                });
+                                
+                                ui.add_space(20.0);
+                                
+                                // 操作按钮
+                                let mut edit_clicked = false;
+                                let mut delete_clicked = false;
+                                let mut close_clicked = false;
+                                
+                                ui.horizontal(|ui| {
+                                    if ui.button("📋 复制值").clicked() {
+                                        ui.output_mut(|o| o.copied_text = variable.value.clone());
+                                    }
+                                    
+                                    ui.add_space(10.0);
+                                    
+                                    if ui.button("✏️ 编辑").clicked() {
+                                        edit_clicked = true;
+                                    }
+                                    
+                                    ui.add_space(10.0);
+                                    
+                                    if ui.button("🗑️ 删除").clicked() {
+                                        delete_clicked = true;
+                                    }
+                                });
+                                
+                                ui.add_space(15.0);
+                                
+                                ui.horizontal(|ui| {
+                                    if ui.button("关闭").clicked() {
+                                        close_clicked = true;
+                                    }
+                                });
+                                
+                                ui.add_space(10.0);
+                                
+                                // 返回按钮点击状态
+                                (edit_clicked, delete_clicked, close_clicked)
+                            })
+                        })
+                    });
+                
+                // 在窗口外处理状态更新
+                if let Some(window_inner) = window_response {
+                    if let Some(frame_inner) = window_inner.inner {
+                        let vertical_inner = frame_inner.inner;
+                        let (edit_clicked, delete_clicked, close_clicked) = vertical_inner.inner;
+                        
+                        if edit_clicked {
+                            self.editing_variable = Some(var_name_clone.clone());
+                            self.show_variable_details = false;
+                        }
+                        
+                        if delete_clicked {
+                            self.delete_confirm_variable = Some(var_name_clone.clone());
+                            self.show_delete_confirm = true;
+                            self.show_variable_details = false;
+                        }
+                        
+                        if close_clicked {
+                            self.show_variable_details = false;
+                            self.selected_detail_variable = None;
+                        }
+                    }
+                }
+            }
+        }
+    }
 }
 
 impl eframe::App for EnvManagerApp {
     fn update(&mut self,
         ctx: &egui::Context,
-        _frame: &mut eframe::Frame,
+        frame: &mut eframe::Frame,
     ) {
+        // 更新窗口尺寸以支持响应式设计
+        let screen_rect = ctx.screen_rect();
+        self.window_width = screen_rect.width();
+        self.window_height = screen_rect.height();
+        
+        // 更新动画时间
+        self.animation_time += ctx.input(|i| i.unstable_dt);
+        
+        // 应用现代样式
+        self.apply_modern_style(ctx);
+        
         egui::TopBottomPanel::top("header").show(ctx, |ui| {
             ui.add_space(4.0);
             self.render_header(ui);
@@ -666,7 +2511,10 @@ impl eframe::App for EnvManagerApp {
         });
 
         self.render_add_dialog(ctx);
-        self.render_settings(ctx);
+        
+        if self.show_settings {
+            self.render_settings(ctx);
+        }
         
         if self.show_delete_confirm {
             self.render_delete_confirm(ctx);
@@ -675,6 +2523,21 @@ impl eframe::App for EnvManagerApp {
         if self.show_batch_delete_confirm {
             self.render_batch_delete_confirm(ctx);
         }
+        
+        if self.show_import_dialog {
+            self.render_import_dialog(ctx);
+        }
+        
+        if self.show_export_dialog {
+            self.render_export_dialog(ctx);
+        }
+        
+        if self.show_variable_details {
+            self.render_variable_details(ctx);
+        }
+        
+        // 请求重绘以支持动画
+        ctx.request_repaint();
     }
 
     fn save(&mut self,

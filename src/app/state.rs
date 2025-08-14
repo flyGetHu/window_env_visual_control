@@ -1,7 +1,7 @@
 use std::sync::{Arc, Mutex};
 
 use crate::core::env_manager::EnvironmentManager;
-use crate::models::env_variable::{EnvVariable, EnvScope};
+use crate::models::env_variable::{EnvScope, EnvVariable};
 use crate::utils::config::AppConfig;
 
 #[derive(Debug, Clone)]
@@ -33,31 +33,32 @@ impl AppState {
         }
     }
 
-    pub fn load_environment_variables(&self,
-    ) -> Result<Vec<EnvVariable>, String> {
+    pub fn load_environment_variables(&self) -> Result<Vec<EnvVariable>, String> {
         let env_manager = self.env_manager.lock().unwrap();
-        env_manager.load_all_variables()
+        env_manager
+            .load_all_variables()
             .map(|vars| vars.iter().cloned().collect())
             .map_err(|e| e.to_string())
     }
 
-    pub fn filter_variables(
-        &self,
-        variables: &[EnvVariable],
-    ) -> Vec<EnvVariable> {
+    pub fn filter_variables(&self, variables: &[EnvVariable]) -> Vec<EnvVariable> {
         let search_query = self.search_query.lock().unwrap().clone();
         let selected_scope = self.selected_scope.lock().unwrap().clone();
 
-        variables.iter()
+        variables
+            .iter()
             .filter(|var| {
-                let matches_scope = selected_scope.as_ref().map_or(true, |scope| var.scope == *scope);
+                let matches_scope = selected_scope
+                    .as_ref()
+                    .map_or(true, |scope| var.scope == *scope);
                 let matches_search = search_query.is_empty() || {
                     let query = search_query.to_lowercase();
-                    var.name.to_lowercase().contains(&query) ||
-                    var.value.to_lowercase().contains(&query) ||
-                    var.description.as_ref().map_or(false, |desc| 
-                        desc.to_lowercase().contains(&query)
-                    )
+                    var.name.to_lowercase().contains(&query)
+                        || var.value.to_lowercase().contains(&query)
+                        || var
+                            .description
+                            .as_ref()
+                            .map_or(false, |desc| desc.to_lowercase().contains(&query))
                 };
                 matches_scope && matches_search
             })
@@ -73,44 +74,34 @@ impl AppState {
         *self.selected_scope.lock().unwrap() = scope;
     }
 
-    pub fn add_variable(
-        &self,
-        name: String,
-        value: String,
-        scope: EnvScope,
-    ) -> Result<(), String> {
+    pub fn add_variable(&self, name: String, value: String, scope: EnvScope) -> Result<(), String> {
         let mut env_manager = self.env_manager.lock().unwrap();
-        env_manager.add_variable(name, value, scope)
+        env_manager
+            .add_variable(name, value, scope)
             .map_err(|e| e.to_string())
     }
 
-    pub fn update_variable(
-        &self,
-        name: &str,
-        value: String,
-    ) -> Result<(), String> {
+    pub fn update_variable(&self, name: &str, value: String) -> Result<(), String> {
         let mut env_manager = self.env_manager.lock().unwrap();
-        env_manager.update_variable(name, value)
+        env_manager
+            .update_variable(name, value)
             .map_err(|e| e.to_string())
     }
 
     pub fn delete_variable(&self, name: &str) -> Result<(), String> {
         let mut env_manager = self.env_manager.lock().unwrap();
-        env_manager.delete_variable(name)
-            .map_err(|e| e.to_string())
+        env_manager.delete_variable(name).map_err(|e| e.to_string())
     }
 
-    pub fn refresh_environment(&self,
-    ) -> Result<(), String> {
+    pub fn refresh_environment(&self) -> Result<(), String> {
         let env_manager = self.env_manager.lock().unwrap();
-        env_manager.refresh_environment()
-            .map_err(|e| e.to_string())
+        env_manager.refresh_environment().map_err(|e| e.to_string())
     }
 
     pub fn set_auto_refresh(&self, auto_refresh: bool) {
         let mut env_manager = self.env_manager.lock().unwrap();
         env_manager.set_auto_refresh(auto_refresh);
-        
+
         let mut config = self.config.lock().unwrap();
         config.auto_refresh = auto_refresh;
     }

@@ -92,10 +92,10 @@ impl EnvironmentManager {
         value: String,
         scope: EnvScope,
     ) -> EnvResult<()> {
-        // 检查权限
-        if scope == EnvScope::System && !self.refresher.is_user_admin() {
+        // 严格验证：只允许添加用户变量
+        if scope == EnvScope::System {
             return Err(EnvError::PermissionDenied(
-                "Admin privileges required for system variables".to_string()
+                "Cannot add system variables for safety reasons".to_string()
             ));
         }
 
@@ -133,10 +133,10 @@ impl EnvironmentManager {
             let scope = variable.scope.clone();
             drop(cache);
 
-            // 检查权限
-            if scope == EnvScope::System && !self.refresher.is_user_admin() {
+            // 严格验证：只允许修改用户变量
+            if scope == EnvScope::System {
                 return Err(EnvError::PermissionDenied(
-                    "Admin privileges required for system variables".to_string()
+                    "Cannot modify system variables for safety reasons".to_string()
                 ));
             }
 
@@ -177,10 +177,10 @@ impl EnvironmentManager {
             let scope = variable.scope.clone();
             drop(cache);
 
-            // 检查权限
-            if scope == EnvScope::System && !self.refresher.is_user_admin() {
+            // 严格验证：只允许删除用户变量
+            if scope == EnvScope::System {
                 return Err(EnvError::PermissionDenied(
-                    "Admin privileges required for system variables".to_string()
+                    "Cannot delete system variables for safety reasons".to_string()
                 ));
             }
 

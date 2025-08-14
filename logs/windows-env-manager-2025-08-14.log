@@ -1,0 +1,15 @@
+[2025-08-14 09:41:21] INFO - window_env_visual_control::utils::logger:90 - Logger initialized at: D:\workspace\rust\window_env_visual_control\logs\windows-env-manager-2025-08-14.log
+[2025-08-14 09:41:21] INFO - window_env_visual_control:13 - Starting Windows Environment Variables Manager
+[2025-08-14 09:41:21] INFO - window_env_visual_control::utils::config:95 - Using default configuration
+[2025-08-14 09:43:19] INFO - window_env_visual_control::core::refresh:70 - Refreshing environment variables for scope: User
+[2025-08-14 09:43:20] INFO - window_env_visual_control::core::refresh:50 - Successfully broadcast environment change notification
+[2025-08-14 09:43:20] INFO - window_env_visual_control::core::env_manager:204 - Deleted environment variable: ANTHROPIC_MODEL_PowerToys_evn_user_keys
+[2025-08-14 09:43:24] INFO - window_env_visual_control::core::refresh:70 - Refreshing environment variables for scope: User
+[2025-08-14 09:43:24] INFO - window_env_visual_control::core::refresh:50 - Successfully broadcast environment change notification
+[2025-08-14 09:43:24] INFO - window_env_visual_control::core::env_manager:204 - Deleted environment variable: ANTHROPIC_AUTH_TOKEN_PowerToys_claude_code_kimi
+[2025-08-14 09:47:54] INFO - window_env_visual_control::utils::logger:90 - Logger initialized at: D:\workspace\rust\window_env_visual_control\logs\windows-env-manager-2025-08-14.log
+[2025-08-14 09:47:54] INFO - window_env_visual_control:13 - Starting Windows Environment Variables Manager
+[2025-08-14 09:47:54] INFO - window_env_visual_control::utils::config:95 - Using default configuration
+[2025-08-14 09:52:57] INFO - window_env_visual_control::utils::logger:90 - Logger initialized at: D:\workspace\rust\window_env_visual_control\logs\windows-env-manager-2025-08-14.log
+[2025-08-14 09:52:57] INFO - window_env_visual_control:13 - Starting Windows Environment Variables Manager
+[2025-08-14 09:52:57] INFO - window_env_visual_control::utils::config:95 - Using default configuration

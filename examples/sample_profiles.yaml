@@ -1,0 +1,27 @@
+profiles:
+  development:
+    enabled: true
+    description: "Development environment variables"
+    scope: User
+    variables:
+      JAVA_HOME: "C:\\Program Files\\Java\\jdk-11"
+      MAVEN_HOME: "C:\\Program Files\\Apache\\maven"
+      NODE_ENV: "development"
+      DEBUG: "true"
+      
+  production:
+    enabled: false
+    description: "Production environment variables"
+    scope: System
+    variables:
+      NODE_ENV: "production"
+      DEBUG: "false"
+      LOG_LEVEL: "info"
+      
+  python-dev:
+    enabled: true
+    description: "Python development setup"
+    scope: User
+    variables:
+      PYTHONPATH: "C:\\dev\\python\\libs"
+      PIP_INDEX_URL: "https://pypi.org/simple/"

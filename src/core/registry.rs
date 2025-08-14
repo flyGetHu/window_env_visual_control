@@ -4,11 +4,11 @@ use std::os::windows::ffi::OsStringExt;
 use std::ptr;
 use winapi::shared::minwindef::{DWORD, HKEY, LPBYTE};
 use winapi::shared::winerror::{ERROR_SUCCESS, ERROR_ENVVAR_NOT_FOUND};
-use winapi::um::processenv::{GetEnvironmentStringsW, FreeEnvironmentStringsW, GetEnvironmentVariableW, SetEnvironmentVariableW};
+use winapi::um::processenv::{GetEnvironmentStringsW, FreeEnvironmentStringsW, GetEnvironmentVariableW};
 use winapi::um::winreg::{RegOpenKeyExW, RegSetValueExW, RegDeleteValueW, RegCloseKey, RegEnumValueW};
 use winapi::um::winnt::{KEY_READ, KEY_WRITE, REG_SZ, REG_EXPAND_SZ};
 
-use crate::models::env_variable::{EnvVariable, EnvScope};
+
 use crate::models::error::{EnvError, EnvResult};
 
 const HKEY_CURRENT_USER: HKEY = 0x80000001 as HKEY;
@@ -82,9 +82,9 @@ impl RegistryManager {
 
             let mut index = 0;
             let mut value_name = vec![0u16; 255];
-            let mut value_name_len: DWORD = 255;
+            let mut value_name_len: DWORD;
             let mut value_data = vec![0u8; 8192];
-            let mut value_data_len: DWORD = 8192;
+            let mut value_data_len: DWORD;
             let mut value_type: DWORD = 0;
 
             loop {
@@ -107,12 +107,10 @@ impl RegistryManager {
                     
                     match value_type {
                         REG_SZ | REG_EXPAND_SZ => {
-                            let value_slice = unsafe {
-                                std::slice::from_raw_parts(
-                                    value_data.as_ptr() as *const u16,
-                                    value_data_len as usize / 2
-                                )
-                            };
+                            let value_slice = std::slice::from_raw_parts(
+                                value_data.as_ptr() as *const u16,
+                                value_data_len as usize / 2
+                            );
                             let value = String::from_utf16(value_slice)?;
                             env_vars.insert(name, value);
                         },

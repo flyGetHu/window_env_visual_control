@@ -1,11 +1,10 @@
-use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 
 use crate::core::registry::RegistryManager;
 use crate::core::refresh::EnvironmentRefresher;
 use crate::models::env_variable::{EnvVariable, EnvScope, EnvVariables};
 use crate::models::error::{EnvError, EnvResult};
-use crate::models::profile::{EnvProfile, EnvProfiles};
+use crate::models::profile::EnvProfiles;
 
 #[derive(Debug)]
 pub struct EnvironmentManager {

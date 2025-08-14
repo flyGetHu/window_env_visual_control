@@ -13,14 +13,13 @@ pub struct AppHeader<'a> {
 impl<'a> AppHeader<'a> {
     pub fn new(
         search_query: &'a mut String,
-        batch_mode: bool,
         is_dark_mode: bool,
         compact_mode: bool,
         theme: &'a ModernTheme,
     ) -> Self {
         Self {
             search_query,
-            batch_mode,
+            batch_mode: false, // Always false since batch mode is removed
             is_dark_mode,
             compact_mode,
             theme,
@@ -57,13 +56,7 @@ impl<'a> AppHeader<'a> {
 
                 ui.add_space(8.0);
 
-                // 批量模式切换
-                let batch_text = if self.batch_mode { "退出批量" } else { "批量模式" };
-                if ui.button(batch_text).clicked() {
-                    actions.toggle_batch_mode = true;
-                }
 
-                ui.add_space(8.0);
 
                 // 设置按钮
                 if ui.button("⚙ 设置").clicked() {
@@ -153,11 +146,6 @@ impl<'a> AppHeader<'a> {
                 if ui.small_button("⚙").clicked() {
                     actions.show_settings = true;
                 }
-                
-                let batch_text = if self.batch_mode { "批量" } else { "批量" };
-                if ui.small_button(batch_text).clicked() {
-                    actions.toggle_batch_mode = true;
-                }
             });
         });
     }
@@ -166,53 +154,8 @@ impl<'a> AppHeader<'a> {
 #[derive(Default)]
 pub struct HeaderActions {
     pub toggle_theme: bool,
-    pub toggle_batch_mode: bool,
     pub show_settings: bool,
     pub show_export: bool,
     pub refresh_variables: bool,
     pub show_add_dialog: bool,
-}
-
-pub struct BatchActions<'a> {
-    pub selected_count: usize,
-    pub theme: &'a ModernTheme,
-}
-
-impl<'a> BatchActions<'a> {
-    pub fn new(selected_count: usize, theme: &'a ModernTheme) -> Self {
-        Self {
-            selected_count,
-            theme,
-        }
-    }
-
-    pub fn show(&self, ui: &mut Ui) -> BatchActionResults {
-        let mut results = BatchActionResults::default();
-
-        if self.selected_count > 0 {
-            ui.horizontal(|ui| {
-                ui.label(format!("已选择: {} 个", self.selected_count));
-                
-                ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                    if ui.button("删除选中").clicked() {
-                        results.delete_selected = true;
-                    }
-                    
-                    ui.add_space(8.0);
-                    
-                    if ui.button("导出选中").clicked() {
-                        results.export_selected = true;
-                    }
-                });
-            });
-        }
-
-        results
-    }
-}
-
-#[derive(Default)]
-pub struct BatchActionResults {
-    pub delete_selected: bool,
-    pub export_selected: bool,
 }

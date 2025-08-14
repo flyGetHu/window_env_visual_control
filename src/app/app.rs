@@ -16,7 +16,6 @@ pub struct EnvManagerApp {
     new_variable_scope: EnvScope,
     show_add_dialog: bool,
     show_delete_confirm: bool,
-    show_batch_delete_confirm: bool,
     delete_confirm_variable: Option<String>,
     theme: ModernTheme,
     is_dark_mode: bool,
@@ -27,8 +26,6 @@ pub struct EnvManagerApp {
     show_variable_details: bool,
     selected_detail_variable: Option<String>,
     show_export_dialog: bool,
-    batch_mode: bool,
-    selected_variables: std::collections::HashSet<String>,
     // 响应式UI控制字段
     compact_mode: bool,
     window_width: f32,
@@ -46,7 +43,6 @@ impl Default for EnvManagerApp {
             new_variable_scope: EnvScope::User,
             show_add_dialog: false,
             show_delete_confirm: false,
-            show_batch_delete_confirm: false,
             delete_confirm_variable: None,
             theme: ModernTheme::new(),
             is_dark_mode: false,
@@ -56,8 +52,6 @@ impl Default for EnvManagerApp {
             show_variable_details: false,
             selected_detail_variable: None,
             show_export_dialog: false,
-            batch_mode: false,
-            selected_variables: std::collections::HashSet::new(),
             compact_mode: false,
             window_width: 1200.0,
         }
@@ -163,94 +157,103 @@ impl EnvManagerApp {
         self.delete_confirm_variable = None;
     }
 
-    fn toggle_batch_mode(&mut self) {
-        self.batch_mode = !self.batch_mode;
-        if !self.batch_mode {
-            self.selected_variables.clear();
-        }
-    }
+    fn render_variable_section(&mut self, ui: &mut egui::Ui, variable: &EnvVariable, is_readonly: bool) {
+        let is_expanded = self.expanded_variables.contains(&variable.name);
+        let is_hovered = self.hovered_variable.as_ref() == Some(&variable.name);
 
-    fn get_selected_counts(&self) -> (usize, usize) {
-        let mut user_count = 0;
-        let mut system_count = 0;
-
-        for name in &self.selected_variables {
-            if let Some(var) = self.variables.iter().find(|v| &v.name == name) {
-                match var.scope {
-                    EnvScope::User => user_count += 1,
-                    EnvScope::System => system_count += 1,
-                }
-            }
-        }
-
-        (user_count, system_count)
-    }
-
-    fn batch_delete_variables(&mut self) {
-        let (user_count, _system_count) = self.get_selected_counts();
-        
-        if user_count > 0 {
-            self.show_batch_delete_confirm = true;
+        let card_color = if is_readonly {
+            self.theme.system_variable_accent
         } else {
-            self.state.set_info_message(Some("没有选择可删除的用户变量".to_string()));
-        }
-    }
-
-    fn confirm_batch_delete(&mut self) {
-        let mut success_count = 0;
-        let mut error_count = 0;
-
-        let delete_requests: Vec<String> = self.selected_variables
-            .iter()
-            .filter(|name| {
-                self.variables
-                    .iter()
-                    .find(|v| &v.name == *name)
-                    .map_or(false, |v| v.scope == EnvScope::User)
-            })
-            .cloned()
-            .collect();
-
-        for name in delete_requests {
-            match self.state.delete_variable(&name) {
-                Ok(_) => success_count += 1,
-                Err(_) => error_count += 1,
-            }
-        }
-
-        self.selected_variables.clear();
-        self.refresh_variables();
-        
-        let message = if error_count > 0 {
-            format!("批量删除完成: 成功 {} 个, 失败 {} 个", success_count, error_count)
-        } else {
-            format!("成功删除 {} 个用户变量", success_count)
+            self.theme.user_variable_accent
         };
-        
-        self.state.set_info_message(Some(message));
-        self.show_batch_delete_confirm = false;
+
+        egui::Frame::none()
+            .fill(if is_hovered { self.theme.card_hover } else { self.theme.card_background })
+            .inner_margin(egui::Margin::same(8.0))
+            .rounding(6.0)
+            .show(ui, |ui| {
+                ui.horizontal(|ui| {
+                    // 变量名
+                    ui.colored_label(card_color, &variable.name);
+                    ui.add_space(8.0);
+
+                    // 变量值
+                    let value_text = if variable.value.len() > 50 {
+                        format!("{}...", &variable.value[..50])
+                    } else {
+                        variable.value.clone()
+                    };
+                    
+                    ui.label(&value_text);
+                    
+                    ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                        if !is_readonly {
+                            if ui.small_button("编辑").clicked() {
+                                self.editing_variable = Some(variable.name.clone());
+                            }
+                            
+                            if ui.small_button("删除").clicked() {
+                                self.delete_variable(&variable.name);
+                            }
+                        }
+                    });
+                });
+
+                // 展开/收起按钮
+                if ui.small_button(if is_expanded { "收起" } else { "展开" }).clicked() {
+                    if is_expanded {
+                        self.expanded_variables.remove(&variable.name);
+                    } else {
+                        self.expanded_variables.insert(variable.name.clone());
+                    }
+                }
+
+                if is_expanded {
+                    ui.add_space(8.0);
+                    egui::Frame::none()
+                        .fill(self.theme.card_background)
+                        .inner_margin(egui::Margin::same(8.0))
+                        .rounding(4.0)
+                        .show(ui, |ui| {
+                            ui.label(format!("完整值: {}", variable.value));
+                            ui.label(format!("作用域: {:?}", variable.scope));
+                            ui.label(format!("创建时间: {}", variable.created_at.format("%Y-%m-%d %H:%M:%S")));
+                            ui.label(format!("更新时间: {}", variable.updated_at.format("%Y-%m-%d %H:%M:%S")));
+                        });
+                }
+            });
+
+        if ui.ctx().input(|i| i.pointer.any_click()) {
+            let response = ui.interact(ui.min_rect(), egui::Id::new(&variable.name), egui::Sense::click());
+            if response.hovered() {
+                self.hovered_variable = Some(variable.name.clone());
+            }
+        }
     }
 
-    fn export_selected_variables(&self) {
-        let selected_vars: Vec<&EnvVariable> = self.variables
-            .iter()
-            .filter(|v| self.selected_variables.contains(&v.name))
-            .collect();
-
-        if selected_vars.is_empty() {
-            self.state.set_info_message(Some("没有选择要导出的变量".to_string()));
+    fn export_all_variables(&self) {
+        if self.variables.is_empty() {
+            self.state.set_info_message(Some("没有变量可导出".to_string()));
             return;
         }
 
-        let export_data: Vec<_> = selected_vars
+        let content = self.variables
             .iter()
             .map(|v| format!("{}={}", v.name, v.value))
-            .collect();
+            .collect::<Vec<_>>()
+            .join("\n");
 
-        let _content = export_data.join("\n");
+        let timestamp = chrono::Local::now().format("%Y%m%d%H%M%S").to_string();
+        let filename = format!("env_{}.txt", timestamp);
         
-        // 这里可以添加实际的文件导出逻辑
-        self.state.set_info_message(Some(format!("已导出 {} 个变量", selected_vars.len())));
+        match std::fs::write(&filename, content) {
+            Ok(_) => {
+                self.state.set_info_message(Some(format!("已导出 {} 个变量到 {}", self.variables.len(), filename)));
+            }
+            Err(e) => {
+                self.state.set_error_message(Some(format!("导出失败: {}", e)));
+            }
+        }
     }
 }
 
@@ -288,7 +291,6 @@ impl eframe::App for EnvManagerApp {
             // 头部区域
             let mut header = AppHeader::new(
                 &mut self.search_query,
-                self.batch_mode,
                 self.is_dark_mode,
                 self.compact_mode,
                 &self.theme,
@@ -300,9 +302,6 @@ impl eframe::App for EnvManagerApp {
             if header_actions.toggle_theme {
                 self.toggle_theme();
             }
-            if header_actions.toggle_batch_mode {
-                self.toggle_batch_mode();
-            }
             if header_actions.refresh_variables {
                 self.refresh_variables();
             }
@@ -310,44 +309,60 @@ impl eframe::App for EnvManagerApp {
                 self.show_add_dialog = true;
             }
             if header_actions.show_export {
-                self.export_selected_variables();
+                self.export_all_variables();
             }
 
             ui.add_space(8.0);
 
-            // 批量操作栏
-            if self.batch_mode {
-                let batch_actions = BatchActions::new(
-                    self.selected_variables.len(),
-                    &self.theme,
-                );
-                let batch_results = batch_actions.show(ui);
+            // 分类显示变量
+            let system_vars: Vec<EnvVariable> = self.variables
+                .iter()
+                .filter(|var| {
+                    matches!(var.scope, EnvScope::System) &&
+                    (self.search_query.is_empty()
+                        || var.name.to_lowercase().contains(&self.search_query.to_lowercase())
+                        || var.value.to_lowercase().contains(&self.search_query.to_lowercase()))
+                })
+                .cloned()
+                .collect();
+
+            let user_vars: Vec<EnvVariable> = self.variables
+                .iter()
+                .filter(|var| {
+                    !matches!(var.scope, EnvScope::System) &&
+                    (self.search_query.is_empty()
+                        || var.name.to_lowercase().contains(&self.search_query.to_lowercase())
+                        || var.value.to_lowercase().contains(&self.search_query.to_lowercase()))
+                })
+                .cloned()
+                .collect();
+
+            // 系统变量区域
+            if !system_vars.is_empty() {
+                ui.heading("系统变量 (只读)");
+                ui.add_space(4.0);
                 
-                if batch_results.delete_selected {
-                    self.batch_delete_variables();
-                }
-                if batch_results.export_selected {
-                    self.export_selected_variables();
+                for variable in &system_vars {
+                    self.render_variable_section(ui, variable, true);
                 }
                 
-                ui.add_space(8.0);
+                ui.add_space(16.0);
             }
 
-            // 变量列表
-            let mut var_list = VariableList::new(
-                &self.variables,
-                &self.theme,
-                &self.search_query,
-                self.batch_mode,
-                &mut self.selected_variables,
-                &mut self.editing_variable,
-                &mut self.hovered_variable,
-                &mut self.expanded_variables,
-            );
+            // 用户变量区域
+            if !user_vars.is_empty() {
+                ui.heading("用户变量");
+                ui.add_space(4.0);
+                
+                for variable in &user_vars {
+                    self.render_variable_section(ui, variable, false);
+                }
+            }
 
-            let delete_requests = var_list.show(ui);
-            for name in delete_requests {
-                self.delete_variable(&name);
+            if system_vars.is_empty() && user_vars.is_empty() {
+                ui.centered_and_justified(|ui| {
+                    ui.label("没有找到匹配的环境变量");
+                });
             }
 
             // 处理编辑状态
@@ -397,17 +412,6 @@ impl eframe::App for EnvManagerApp {
             );
             if delete_dialog.show(ui) {
                 self.confirm_delete_variable();
-            }
-
-            let (user_count, system_count) = self.get_selected_counts();
-            let mut batch_delete_dialog = BatchDeleteConfirmDialog::new(
-                &mut self.show_batch_delete_confirm,
-                user_count,
-                system_count,
-                &self.theme,
-            );
-            if batch_delete_dialog.show(ui) {
-                self.confirm_batch_delete();
             }
         });
     }

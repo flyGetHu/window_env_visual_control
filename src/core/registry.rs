@@ -1,18 +1,15 @@
 use std::collections::HashMap;
-use std::ffi::OsString;
-use std::os::windows::ffi::OsStringExt;
 use std::ptr;
-use winapi::shared::minwindef::{DWORD, HKEY, LPBYTE};
-use winapi::shared::winerror::{ERROR_SUCCESS, ERROR_ENVVAR_NOT_FOUND};
-use winapi::um::processenv::{GetEnvironmentStringsW, FreeEnvironmentStringsW, GetEnvironmentVariableW};
-use winapi::um::winreg::{RegOpenKeyExW, RegSetValueExW, RegDeleteValueW, RegCloseKey, RegEnumValueW};
-use winapi::um::winnt::{KEY_READ, KEY_WRITE, REG_SZ, REG_EXPAND_SZ};
 
+use winapi::shared::minwindef::{DWORD, HKEY, LPBYTE};
+use winapi::shared::winerror::ERROR_SUCCESS;
+use winapi::um::winnt::{KEY_READ, KEY_WRITE, REG_EXPAND_SZ, REG_SZ};
+use winapi::um::winreg::{
+    RegCloseKey, RegDeleteValueW, RegEnumValueW, RegOpenKeyExW, RegSetValueExW, HKEY_CURRENT_USER,
+    HKEY_LOCAL_MACHINE,
+};
 
 use crate::models::error::{EnvError, EnvResult};
-
-const HKEY_CURRENT_USER: HKEY = 0x80000001 as HKEY;
-const HKEY_LOCAL_MACHINE: HKEY = 0x80000002 as HKEY;
 
 #[derive(Debug)]
 pub struct RegistryManager;
@@ -222,86 +219,5 @@ impl RegistryManager {
         }
 
         Ok(())
-    }
-
-    /// 获取当前进程的环境变量
-    pub fn get_process_env_vars(&self,
-    ) -> EnvResult<HashMap<String, String>> {
-        let mut env_vars = HashMap::new();
-        
-        unsafe {
-            let env_strings = GetEnvironmentStringsW();
-            if env_strings.is_null() {
-                return Err(EnvError::WindowsApiError(std::io::Error::last_os_error()));
-            }
-
-            let mut ptr = env_strings;
-            loop {
-                let mut len = 0;
-                while *ptr.add(len) != 0 {
-                    len += 1;
-                }
-
-                if len == 0 {
-                    break;
-                }
-
-                let slice = std::slice::from_raw_parts(ptr, len);
-                let os_string = OsString::from_wide(slice);
-                
-                if let Some(s) = os_string.to_str() {
-                    if let Some(eq_pos) = s.find('=') {
-                        let (name, value) = s.split_at(eq_pos);
-                        env_vars.insert(name.to_string(), value[1..].to_string());
-                    }
-                }
-
-                ptr = ptr.add(len + 1);
-            }
-
-            FreeEnvironmentStringsW(env_strings);
-        }
-
-        Ok(env_vars)
-    }
-
-    /// 获取单个环境变量的值
-    pub fn get_env_var(&self,
-        name: &str,
-    ) -> EnvResult<Option<String>> {
-        let name_wide: Vec<u16> = name.encode_utf16().chain(std::iter::once(0)).collect();
-        let mut buffer = vec![0u16; 32767];
-
-        unsafe {
-            let result = GetEnvironmentVariableW(
-                name_wide.as_ptr(),
-                buffer.as_mut_ptr(),
-                buffer.len() as DWORD,
-            );
-
-            if result == 0 {
-                let error = std::io::Error::last_os_error();
-                if error.raw_os_error() == Some(ERROR_ENVVAR_NOT_FOUND as i32) {
-                    return Ok(None);
-                }
-                return Err(EnvError::WindowsApiError(error));
-            }
-
-            if result as usize >= buffer.len() {
-                buffer.resize(result as usize, 0);
-                let result = GetEnvironmentVariableW(
-                    name_wide.as_ptr(),
-                    buffer.as_mut_ptr(),
-                    buffer.len() as DWORD,
-                );
-
-                if result == 0 || result as usize >= buffer.len() {
-                    return Err(EnvError::WindowsApiError(std::io::Error::last_os_error()));
-                }
-            }
-
-            let value = String::from_utf16(&buffer[..result as usize])?;
-            Ok(Some(value))
-        }
     }
 }

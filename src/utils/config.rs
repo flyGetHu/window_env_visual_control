@@ -95,30 +95,4 @@ impl AppConfig {
         log::info!("Using default configuration");
         Self::default()
     }
-
-    pub fn save(&self,
-    ) -> Result<(), Box<dyn std::error::Error>> {
-        let config_file = Self::config_file();
-        let content = serde_json::to_string_pretty(self)?;
-        std::fs::write(&config_file, content)?;
-        log::info!("Configuration saved to {}", config_file);
-        Ok(())
-    }
-
-    pub fn get_profiles_dir(&self,
-    ) -> PathBuf {
-        PathBuf::from(&self.profiles_dir)
-    }
-
-    pub fn get_log_level_filter(&self,
-    ) -> log::LevelFilter {
-        match self.log_level.as_str() {
-            "error" => log::LevelFilter::Error,
-            "warn" => log::LevelFilter::Warn,
-            "info" => log::LevelFilter::Info,
-            "debug" => log::LevelFilter::Debug,
-            "trace" => log::LevelFilter::Trace,
-            _ => log::LevelFilter::Info,
-        }
-    }
 }

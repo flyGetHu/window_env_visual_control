@@ -2,33 +2,34 @@ use eframe::egui;
 use std::sync::Arc;
 
 use crate::app::state::AppState;
-use crate::app::theme::{ModernTheme, ThemeExt};
-use crate::app::components::*;
 use crate::models::env_variable::{EnvScope, EnvVariable};
+
+struct AppStyle {
+    sidebar_width: f32,
+    spacing: f32,
+}
+
+impl Default for AppStyle {
+    fn default() -> Self {
+        Self {
+            sidebar_width: 200.0,
+            spacing: 8.0,
+        }
+    }
+}
 
 pub struct EnvManagerApp {
     state: Arc<AppState>,
     variables: Vec<EnvVariable>,
-    selected_variable: Option<String>,
-    editing_variable: Option<String>,
+    selected_variable_name: Option<String>,
+    editing_variable_name: Option<String>,
     new_variable_name: String,
     new_variable_value: String,
-    new_variable_scope: EnvScope,
     show_add_dialog: bool,
     show_delete_confirm: bool,
-    delete_confirm_variable: Option<String>,
-    theme: ModernTheme,
-    is_dark_mode: bool,
     search_query: String,
-    // UI状态字段
-    expanded_variables: std::collections::HashSet<String>,
-    hovered_variable: Option<String>,
-    show_variable_details: bool,
-    selected_detail_variable: Option<String>,
-    show_export_dialog: bool,
-    // 响应式UI控制字段
-    compact_mode: bool,
-    window_width: f32,
+    selected_scope: EnvScope,
+    style: AppStyle,
 }
 
 impl Default for EnvManagerApp {
@@ -36,24 +37,15 @@ impl Default for EnvManagerApp {
         Self {
             state: Arc::new(AppState::new()),
             variables: Vec::new(),
-            selected_variable: None,
-            editing_variable: None,
+            selected_variable_name: None,
+            editing_variable_name: None,
             new_variable_name: String::new(),
             new_variable_value: String::new(),
-            new_variable_scope: EnvScope::User,
             show_add_dialog: false,
             show_delete_confirm: false,
-            delete_confirm_variable: None,
-            theme: ModernTheme::new(),
-            is_dark_mode: false,
             search_query: String::new(),
-            expanded_variables: std::collections::HashSet::new(),
-            hovered_variable: None,
-            show_variable_details: false,
-            selected_detail_variable: None,
-            show_export_dialog: false,
-            compact_mode: false,
-            window_width: 1200.0,
+            selected_scope: EnvScope::User,
+            style: AppStyle::default(),
         }
     }
 }
@@ -68,15 +60,6 @@ impl EnvManagerApp {
         }
 
         app
-    }
-
-    fn toggle_theme(&mut self) {
-        self.is_dark_mode = !self.is_dark_mode;
-        self.theme = if self.is_dark_mode {
-            ModernTheme::dark()
-        } else {
-            ModernTheme::new()
-        };
     }
 
     fn load_variables(&mut self) -> Result<(), String> {
@@ -104,7 +87,7 @@ impl EnvManagerApp {
         match self.state.add_variable(
             self.new_variable_name.clone(),
             self.new_variable_value.clone(),
-            self.new_variable_scope.clone(),
+            self.selected_scope.clone(),
         ) {
             Ok(_) => {
                 self.new_variable_name.clear();
@@ -123,7 +106,7 @@ impl EnvManagerApp {
     fn update_variable(&mut self, name: &str, value: String) {
         match self.state.update_variable(name, value) {
             Ok(_) => {
-                self.editing_variable = None;
+                self.editing_variable_name = None;
                 self.refresh_variables();
                 self.state
                     .set_info_message(Some("变量更新成功".to_string()));
@@ -134,285 +117,212 @@ impl EnvManagerApp {
         }
     }
 
-    fn delete_variable(&mut self, name: &str) {
-        self.delete_confirm_variable = Some(name.to_string());
-        self.show_delete_confirm = true;
-    }
-
-    fn confirm_delete_variable(&mut self) {
-        if let Some(name) = &self.delete_confirm_variable {
-            match self.state.delete_variable(name) {
-                Ok(_) => {
-                    self.selected_variable = None;
-                    self.refresh_variables();
-                    self.state
-                        .set_info_message(Some("变量删除成功".to_string()));
-                }
-                Err(e) => {
-                    self.state.set_error_message(Some(e));
+    fn delete_variable(&mut self) {
+        if let Some(name) = self.selected_variable_name.clone() {
+            // 从变量列表中找到对应的变量及其作用域
+            if let Some(variable) = self.variables.iter().find(|v| v.name == name) {
+                match self.state.delete_variable(&name, variable.scope.clone()) {
+                    Ok(_) => {
+                        self.selected_variable_name = None;
+                        self.refresh_variables();
+                        self.state
+                            .set_info_message(Some("变量删除成功".to_string()));
+                    }
+                    Err(e) => {
+                        self.state.set_error_message(Some(e));
+                    }
                 }
             }
         }
         self.show_delete_confirm = false;
-        self.delete_confirm_variable = None;
     }
 
-    fn render_variable_section(&mut self, ui: &mut egui::Ui, variable: &EnvVariable, is_readonly: bool) {
-        let is_expanded = self.expanded_variables.contains(&variable.name);
-        let is_hovered = self.hovered_variable.as_ref() == Some(&variable.name);
-
-        let card_color = if is_readonly {
-            self.theme.system_variable_accent
+    fn apply_changes(&mut self) {
+        if let Err(e) = self.state.refresh_environment() {
+            self.state.set_error_message(Some(format!("应用更改失败: {}", e)));
         } else {
-            self.theme.user_variable_accent
-        };
-
-        egui::Frame::none()
-            .fill(if is_hovered { self.theme.card_hover } else { self.theme.card_background })
-            .inner_margin(egui::Margin::same(8.0))
-            .rounding(6.0)
-            .show(ui, |ui| {
-                ui.horizontal(|ui| {
-                    // 变量名
-                    ui.colored_label(card_color, &variable.name);
-                    ui.add_space(8.0);
-
-                    // 变量值
-                    let value_text = if variable.value.len() > 50 {
-                        format!("{}...", &variable.value[..50])
-                    } else {
-                        variable.value.clone()
-                    };
-                    
-                    ui.label(&value_text);
-                    
-                    ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                        if !is_readonly {
-                            if ui.small_button("编辑").clicked() {
-                                self.editing_variable = Some(variable.name.clone());
-                            }
-                            
-                            if ui.small_button("删除").clicked() {
-                                self.delete_variable(&variable.name);
-                            }
-                        }
-                    });
-                });
-
-                // 展开/收起按钮
-                if ui.small_button(if is_expanded { "收起" } else { "展开" }).clicked() {
-                    if is_expanded {
-                        self.expanded_variables.remove(&variable.name);
-                    } else {
-                        self.expanded_variables.insert(variable.name.clone());
-                    }
-                }
-
-                if is_expanded {
-                    ui.add_space(8.0);
-                    egui::Frame::none()
-                        .fill(self.theme.card_background)
-                        .inner_margin(egui::Margin::same(8.0))
-                        .rounding(4.0)
-                        .show(ui, |ui| {
-                            ui.label(format!("完整值: {}", variable.value));
-                            ui.label(format!("作用域: {:?}", variable.scope));
-                            ui.label(format!("创建时间: {}", variable.created_at.format("%Y-%m-%d %H:%M:%S")));
-                            ui.label(format!("更新时间: {}", variable.updated_at.format("%Y-%m-%d %H:%M:%S")));
-                        });
-                }
-            });
-
-        if ui.ctx().input(|i| i.pointer.any_click()) {
-            let response = ui.interact(ui.min_rect(), egui::Id::new(&variable.name), egui::Sense::click());
-            if response.hovered() {
-                self.hovered_variable = Some(variable.name.clone());
-            }
-        }
-    }
-
-    fn export_all_variables(&self) {
-        if self.variables.is_empty() {
-            self.state.set_info_message(Some("没有变量可导出".to_string()));
-            return;
-        }
-
-        let content = self.variables
-            .iter()
-            .map(|v| format!("{}={}", v.name, v.value))
-            .collect::<Vec<_>>()
-            .join("\n");
-
-        let timestamp = chrono::Local::now().format("%Y%m%d%H%M%S").to_string();
-        let filename = format!("env_{}.txt", timestamp);
-        
-        match std::fs::write(&filename, content) {
-            Ok(_) => {
-                self.state.set_info_message(Some(format!("已导出 {} 个变量到 {}", self.variables.len(), filename)));
-            }
-            Err(e) => {
-                self.state.set_error_message(Some(format!("导出失败: {}", e)));
-            }
+            self.state.set_info_message(Some("更改已应用，可能需要重启应用生效".to_string()));
         }
     }
 }
 
 impl eframe::App for EnvManagerApp {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
-        self.theme.apply_modern_style(ctx, self.is_dark_mode, &self.theme);
+        self.render_main_panel(ctx);
+        self.handle_dialogs(ctx);
+    }
+}
 
-        // 显示状态消息
-        if let Some(error) = &self.state.get_error_message() {
-            egui::Window::new("错误")
-                .open(&mut true)
-                .show(ctx, |ui| {
-                    ui.label(error);
-                    if ui.button("确定").clicked() {
-                        self.state.set_error_message(None);
-                    }
-                });
-        }
-
-        if let Some(info) = &self.state.get_info_message() {
-            egui::Window::new("提示")
-                .open(&mut true)
-                .show(ctx, |ui| {
-                    ui.label(info);
-                    if ui.button("确定").clicked() {
-                        self.state.set_info_message(None);
-                    }
-                });
-        }
+impl EnvManagerApp {
+    fn render_main_panel(&mut self, ctx: &egui::Context) {
+        egui::SidePanel::left("sidebar")
+            .width_range(self.style.sidebar_width..=self.style.sidebar_width + 100.0)
+            .show(ctx, |ui| {
+                self.render_left_panel(ui);
+            });
 
         egui::CentralPanel::default().show(ctx, |ui| {
-            self.window_width = ui.available_width();
-            self.compact_mode = self.window_width < 800.0;
+            self.render_right_panel(ui);
+        });
+    }
 
-            // 头部区域
-            let mut header = AppHeader::new(
-                &mut self.search_query,
-                self.is_dark_mode,
-                self.compact_mode,
-                &self.theme,
-            );
-            
-            let header_actions = header.show(ui);
+    fn render_left_panel(&mut self, ui: &mut egui::Ui) {
+        ui.vertical_centered(|ui| {
+            ui.heading("环境变量管理器");
+        });
+        ui.add_space(self.style.spacing * 2.0);
 
-            // 处理头部操作
-            if header_actions.toggle_theme {
-                self.toggle_theme();
-            }
-            if header_actions.refresh_variables {
-                self.refresh_variables();
-            }
-            if header_actions.show_add_dialog {
-                self.show_add_dialog = true;
-            }
-            if header_actions.show_export {
-                self.export_all_variables();
-            }
+        ui.group(|ui| {
+            ui.label("变量类型");
+            ui.selectable_value(&mut self.selected_scope, EnvScope::User, "用户变量");
+            ui.selectable_value(&mut self.selected_scope, EnvScope::System, "系统变量");
+        });
+        ui.add_space(self.style.spacing);
 
-            ui.add_space(8.0);
+        ui.label("操作");
+        if ui.button("➕ 添加变量").clicked() {
+            self.show_add_dialog = true;
+        }
 
-            // 分类显示变量
-            let system_vars: Vec<EnvVariable> = self.variables
-                .iter()
-                .filter(|var| {
-                    matches!(var.scope, EnvScope::System) &&
-                    (self.search_query.is_empty()
-                        || var.name.to_lowercase().contains(&self.search_query.to_lowercase())
-                        || var.value.to_lowercase().contains(&self.search_query.to_lowercase()))
-                })
-                .cloned()
-                .collect();
-
-            let user_vars: Vec<EnvVariable> = self.variables
-                .iter()
-                .filter(|var| {
-                    !matches!(var.scope, EnvScope::System) &&
-                    (self.search_query.is_empty()
-                        || var.name.to_lowercase().contains(&self.search_query.to_lowercase())
-                        || var.value.to_lowercase().contains(&self.search_query.to_lowercase()))
-                })
-                .cloned()
-                .collect();
-
-            // 系统变量区域
-            if !system_vars.is_empty() {
-                ui.heading("系统变量 (只读)");
-                ui.add_space(4.0);
-                
-                for variable in &system_vars {
-                    self.render_variable_section(ui, variable, true);
+        let edit_button_enabled = self.selected_variable_name.is_some();
+        ui.add_enabled(edit_button_enabled, egui::Button::new("✏️ 编辑变量"))
+            .on_hover_text("选择一个变量后启用")
+            .clicked()
+            .then(|| {
+                if let Some(name) = self.selected_variable_name.clone() {
+                    self.editing_variable_name = Some(name);
                 }
-                
-                ui.add_space(16.0);
-            }
+            });
 
-            // 用户变量区域
-            if !user_vars.is_empty() {
-                ui.heading("用户变量");
-                ui.add_space(4.0);
-                
-                for variable in &user_vars {
-                    self.render_variable_section(ui, variable, false);
-                }
-            }
+        let delete_button_enabled = self.selected_variable_name.is_some();
+        ui.add_enabled(delete_button_enabled, egui::Button::new("🗑️ 删除变量"))
+            .on_hover_text("选择一个变量后启用")
+            .clicked()
+            .then(|| {
+                self.show_delete_confirm = true;
+            });
+        
+        ui.add_space(self.style.spacing * 2.0);
+        
+        if ui.button("🔄 应用更改").clicked() {
+            self.apply_changes();
+        }
 
-            if system_vars.is_empty() && user_vars.is_empty() {
-                ui.centered_and_justified(|ui| {
-                    ui.label("没有找到匹配的环境变量");
-                });
+        ui.with_layout(egui::Layout::bottom_up(egui::Align::Center), |ui| {
+            ui.label("状态信息");
+            if let Some(info) = self.state.get_info_message() {
+                ui.label(info);
             }
-
-            // 处理编辑状态
-            let editing_name = self.editing_variable.clone();
-            if let Some(name) = editing_name {
-                if let Some(variable) = self.variables.iter().find(|v| v.name == name) {
-                    let mut new_value = variable.value.clone();
-                    
-                    egui::Window::new(format!("编辑: {}", name))
-                        .open(&mut true)
-                        .show(ctx, |ui| {
-                            ui.horizontal(|ui| {
-                                ui.label("变量值:");
-                                ui.text_edit_singleline(&mut new_value);
-                            });
-                            
-                            ui.horizontal(|ui| {
-                                if ui.button("保存").clicked() {
-                                    self.update_variable(&name, new_value);
-                                    self.editing_variable = None;
-                                }
-                                
-                                if ui.button("取消").clicked() {
-                                    self.editing_variable = None;
-                                }
-                            });
-                        });
-                }
-            }
-
-            // 对话框
-            let mut add_dialog = AddVariableDialog::new(
-                &mut self.show_add_dialog,
-                &mut self.new_variable_name,
-                &mut self.new_variable_value,
-                &mut self.new_variable_scope,
-                &self.theme,
-            );
-            if add_dialog.show(ui) {
-                self.add_variable();
-            }
-
-            let mut delete_dialog = DeleteConfirmDialog::new(
-                &mut self.show_delete_confirm,
-                self.delete_confirm_variable.as_deref().unwrap_or(""),
-                &self.theme,
-            );
-            if delete_dialog.show(ui) {
-                self.confirm_delete_variable();
+             if let Some(error) = self.state.get_error_message() {
+                ui.colored_label(egui::Color32::RED, error);
             }
         });
+    }
+
+    fn render_right_panel(&mut self, ui: &mut egui::Ui) {
+        ui.horizontal(|ui| {
+            ui.label("搜索:");
+            ui.text_edit_singleline(&mut self.search_query);
+        });
+        ui.separator();
+
+        let filtered_vars: Vec<EnvVariable> = self.variables
+            .iter()
+            .filter(|var| {
+                let scope_match = var.scope == self.selected_scope;
+                let search_match = self.search_query.is_empty()
+                    || var.name.to_lowercase().contains(&self.search_query.to_lowercase())
+                    || var.value.to_lowercase().contains(&self.search_query.to_lowercase());
+                scope_match && search_match
+            })
+            .cloned()
+            .collect();
+
+        egui::ScrollArea::vertical().show(ui, |ui| {
+            for var in filtered_vars {
+                let is_selected = self.selected_variable_name.as_ref() == Some(&var.name);
+                let response = ui.selectable_label(is_selected, format!("{}: {}", var.name, var.value));
+                if response.clicked() {
+                    self.selected_variable_name = Some(var.name.clone());
+                }
+            }
+        });
+    }
+
+    fn handle_dialogs(&mut self, ctx: &egui::Context) {
+        let mut wants_to_add = false;
+        if self.show_add_dialog {
+            egui::Window::new("添加新变量")
+                .open(&mut self.show_add_dialog)
+                .show(ctx, |ui| {
+                    ui.horizontal(|ui| {
+                        ui.label("名称:");
+                        ui.text_edit_singleline(&mut self.new_variable_name);
+                    });
+                    ui.horizontal(|ui| {
+                        ui.label("值:");
+                        ui.text_edit_singleline(&mut self.new_variable_value);
+                    });
+                    if ui.button("确认添加").clicked() {
+                        wants_to_add = true;
+                    }
+                });
+        }
+        if wants_to_add {
+            self.add_variable();
+        }
+
+        let mut wants_to_update = false;
+        let mut updated_value = String::new();
+        if let Some(editing_name) = self.editing_variable_name.clone() {
+             if let Some(variable) = self.variables.iter_mut().find(|v| v.name == editing_name) {
+                let mut open = true;
+                egui::Window::new(format!("编辑: {}", editing_name))
+                    .open(&mut open)
+                    .show(ctx, |ui| {
+                        ui.text_edit_singleline(&mut variable.value);
+                        if ui.button("保存").clicked() {
+                            wants_to_update = true;
+                            updated_value = variable.value.clone();
+                        }
+                    });
+                if !open {
+                    self.editing_variable_name = None;
+                }
+             }
+        }
+        if wants_to_update {
+            if let Some(name) = self.editing_variable_name.clone() {
+                self.update_variable(&name, updated_value);
+            }
+        }
+
+        let mut wants_to_delete = false;
+        if self.show_delete_confirm {
+            let variable_to_delete = self.selected_variable_name.clone().unwrap_or_default();
+            let mut open = true;
+            let mut cancel = false;
+            egui::Window::new("确认删除")
+                .open(&mut open)
+                .show(ctx, |ui| {
+                    ui.label(format!("确定要删除 '{}' 吗?", variable_to_delete));
+                    ui.horizontal(|ui| {
+                        if ui.button("确认").clicked() {
+                            wants_to_delete = true;
+                        }
+                        if ui.button("取消").clicked() {
+                            cancel = true;
+                        }
+                    });
+                });
+
+            if !open || wants_to_delete || cancel {
+                self.show_delete_confirm = false;
+            }
+
+            if wants_to_delete {
+                self.delete_variable();
+            }
+        }
     }
 }

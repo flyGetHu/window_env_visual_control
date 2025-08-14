@@ -89,8 +89,3 @@ pub fn init_logger() {
     FileLogger::init(&log_file, LevelFilter::Info);
     log::info!("Logger initialized at: {}", log_file);
 }
-
-pub fn set_log_level(level: LevelFilter) {
-    log::set_max_level(level);
-    log::info!("Log level set to: {:?}", level);
-}

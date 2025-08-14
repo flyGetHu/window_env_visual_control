@@ -17,6 +17,9 @@ pub struct EnvManagerApp {
     show_settings: bool,
     show_batch_operations: bool,
     batch_operation_mode: bool,
+    show_delete_confirm: bool,
+    delete_confirm_variable: Option<String>,
+    show_batch_delete_confirm: bool,
 }
 
 impl Default for EnvManagerApp {
@@ -34,6 +37,9 @@ impl Default for EnvManagerApp {
             show_settings: false,
             show_batch_operations: false,
             batch_operation_mode: false,
+            show_delete_confirm: false,
+            delete_confirm_variable: None,
+            show_batch_delete_confirm: false,
         }
     }
 }
@@ -103,19 +109,34 @@ impl EnvManagerApp {
     }
 
     fn delete_variable(&mut self, name: &str) {
-        match self.state.delete_variable(name) {
-            Ok(_) => {
-                self.selected_variable = None;
-                self.refresh_variables();
-                self.state.set_info_message(Some("Variable deleted successfully".to_string()));
-            }
-            Err(e) => {
-                self.state.set_error_message(Some(e));
+        // 显示删除确认对话框
+        self.delete_confirm_variable = Some(name.to_string());
+        self.show_delete_confirm = true;
+    }
+    
+    fn confirm_delete_variable(&mut self) {
+        if let Some(name) = &self.delete_confirm_variable {
+            match self.state.delete_variable(name) {
+                Ok(_) => {
+                    self.selected_variable = None;
+                    self.refresh_variables();
+                    self.state.set_info_message(Some("Variable deleted successfully".to_string()));
+                }
+                Err(e) => {
+                    self.state.set_error_message(Some(e));
+                }
             }
         }
+        self.show_delete_confirm = false;
+        self.delete_confirm_variable = None;
     }
 
     fn delete_selected_variables(&mut self) {
+        // 显示批量删除确认对话框
+        self.show_batch_delete_confirm = true;
+    }
+    
+    fn confirm_delete_selected_variables(&mut self) {
         let mut success_count = 0;
         let mut error_count = 0;
         let mut skipped_count = 0;
@@ -156,6 +177,8 @@ impl EnvManagerApp {
             let error_msg = format!("{}, {} failed: {}", message_parts.join(", "), error_count, errors.join(", "));
             self.state.set_error_message(Some(error_msg));
         }
+        
+        self.show_batch_delete_confirm = false;
     }
 
     fn export_selected_variables(&mut self) {
@@ -373,7 +396,8 @@ impl EnvManagerApp {
                     ui.horizontal(|ui| {
                         ui.label("Scope:");
                         ui.radio_value(&mut self.new_variable_scope, EnvScope::User, "User");
-                        ui.radio_value(&mut self.new_variable_scope, EnvScope::System, "System");
+                        // 禁用系统变量选项以防止误操作
+                        ui.add_enabled(false, egui::RadioButton::new(false, "System (Read-only)"));
                     });
                     
                     if !has_admin_permission {
@@ -525,6 +549,93 @@ impl EnvManagerApp {
             }
         });
     }
+    
+    fn render_delete_confirm(&mut self, ctx: &egui::Context) {
+        let mut confirm_clicked = false;
+        let mut cancel_clicked = false;
+        
+        egui::Window::new("Confirm Delete")
+            .open(&mut self.show_delete_confirm)
+            .show(ctx, |ui| {
+                ui.vertical(|ui| {
+                    if let Some(var_name) = &self.delete_confirm_variable {
+                        ui.label(format!("Are you sure you want to delete the variable '{}'?", var_name));
+                        ui.add_space(10.0);
+                        ui.colored_label(egui::Color32::RED, "⚠ This action cannot be undone.");
+                        ui.add_space(10.0);
+                        
+                        ui.horizontal(|ui| {
+                            if ui.button("🗑 Delete").clicked() {
+                                confirm_clicked = true;
+                            }
+                            if ui.button("Cancel").clicked() {
+                                cancel_clicked = true;
+                            }
+                        });
+                    }
+                });
+            });
+        
+        if confirm_clicked {
+            self.confirm_delete_variable();
+        }
+        if cancel_clicked {
+            self.show_delete_confirm = false;
+            self.delete_confirm_variable = None;
+        }
+    }
+    
+    fn render_batch_delete_confirm(&mut self, ctx: &egui::Context) {
+        let mut confirm_clicked = false;
+        let mut cancel_clicked = false;
+        
+        egui::Window::new("Confirm Batch Delete")
+            .open(&mut self.show_batch_delete_confirm)
+            .show(ctx, |ui| {
+                ui.vertical(|ui| {
+                    let user_vars_count = self.selected_variables.iter()
+                        .filter(|name| {
+                            self.variables.iter()
+                                .find(|v| &v.name == *name)
+                                .map(|v| v.scope == EnvScope::User)
+                                .unwrap_or(false)
+                        })
+                        .count();
+                    
+                    let system_vars_count = self.selected_variables.len() - user_vars_count;
+                    
+                    ui.label(format!("Are you sure you want to delete {} selected variables?", self.selected_variables.len()));
+                    ui.add_space(5.0);
+                    
+                    if user_vars_count > 0 {
+                        ui.label(format!("• {} user variables will be deleted", user_vars_count));
+                    }
+                    if system_vars_count > 0 {
+                        ui.colored_label(egui::Color32::YELLOW, format!("• {} system variables will be skipped (read-only)", system_vars_count));
+                    }
+                    
+                    ui.add_space(10.0);
+                    ui.colored_label(egui::Color32::RED, "⚠ This action cannot be undone.");
+                    ui.add_space(10.0);
+                    
+                    ui.horizontal(|ui| {
+                        if ui.button("🗑 Delete").clicked() {
+                            confirm_clicked = true;
+                        }
+                        if ui.button("Cancel").clicked() {
+                            cancel_clicked = true;
+                        }
+                    });
+                });
+            });
+        
+        if confirm_clicked {
+            self.confirm_delete_selected_variables();
+        }
+        if cancel_clicked {
+            self.show_batch_delete_confirm = false;
+        }
+    }
 }
 
 impl eframe::App for EnvManagerApp {
@@ -556,6 +667,14 @@ impl eframe::App for EnvManagerApp {
 
         self.render_add_dialog(ctx);
         self.render_settings(ctx);
+        
+        if self.show_delete_confirm {
+            self.render_delete_confirm(ctx);
+        }
+        
+        if self.show_batch_delete_confirm {
+            self.render_batch_delete_confirm(ctx);
+        }
     }
 
     fn save(&mut self,

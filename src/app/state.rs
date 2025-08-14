@@ -10,7 +10,6 @@ pub struct AppState {
     pub config: Arc<Mutex<AppConfig>>,
     pub search_query: Arc<Mutex<String>>,
     pub selected_scope: Arc<Mutex<Option<EnvScope>>>,
-    pub selected_variables: Arc<Mutex<Vec<String>>>,
     pub is_loading: Arc<Mutex<bool>>,
     pub error_message: Arc<Mutex<Option<String>>>,
     pub info_message: Arc<Mutex<Option<String>>>,
@@ -26,7 +25,6 @@ impl AppState {
             config: Arc::new(Mutex::new(config)),
             search_query: Arc::new(Mutex::new(String::new())),
             selected_scope: Arc::new(Mutex::new(Some(EnvScope::User))), // 默认选中User环境变量
-            selected_variables: Arc::new(Mutex::new(Vec::new())),
             is_loading: Arc::new(Mutex::new(false)),
             error_message: Arc::new(Mutex::new(None)),
             info_message: Arc::new(Mutex::new(None)),
